@@ -1,0 +1,48 @@
+# ===================================================================
+# Flash Sale B2C - Production Profile (Docker / Kubernetes / Cloud)
+# File cấu hình production chuẩn 12-Factor App, 100% sử dụng biến môi trường.
+# An toàn để lưu trữ và đẩy lên GitHub.
+# ===================================================================
+
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  # --- Kết nối CSDL PostgreSQL Production ---
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:flash_sale_db}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: FlashSaleProdHikariPool
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:30}
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  # --- JPA / Hibernate Cấu hình cho Production ---
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # --- Cấu hình Redis Production (Redis Cluster hoặc Master-Replica) ---
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+# --- Logging tối ưu cho môi trường Production ---
+logging:
+  level:
+    root: INFO
+    com.b2c: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN
