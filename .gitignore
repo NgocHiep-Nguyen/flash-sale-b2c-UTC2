@@ -1,0 +1,204 @@
+# ==========================================
+# Flash Sale B2C - Git Ignore Configuration
+# Dự án: Hệ thống Flash Sale B2C chống Over-selling
+# Hỗ trợ: Spring Boot (Gradle), Next.js, Flutter, Docker, Redis, k6 / JMeter
+# ==========================================
+
+### --- 1. Hệ điều hành & Tệp rác tạm thời (OS) ---
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+### --- 2. IDEs & Editors ---
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# Eclipse / Spring Tool Suite (STS)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### --- 3. Java & Gradle (Spring Boot Backend) ---
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# Compiled Java classes
+*.class
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Package files (JAR, WAR, archives)
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+!gradle-wrapper.jar
+
+# JVM Crash logs
+hs_err_pid*
+replay_pid*
+
+# Spring Initializr default help
+HELP.md
+
+### --- 4. Node.js & Next.js (Storefront & Web Admin) ---
+node_modules/
+.next/
+out/
+.turbo/
+.cache/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Test & Code Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Linting & Types cache
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+### --- 5. Flutter & Dart (Mobile App Quản Trị) ---
+# Dart / Flutter build artifacts
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Android artifacts trong Flutter
+**/android/app/build/
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/key.properties
+**/android/*.keystore
+**/android/*.jks
+
+# iOS artifacts trong Flutter
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+### --- 6. Secrets, Environment Variables & API Keys ---
+# Tuyệt đối không đẩy secret (Gemini API key, DB pass, Redis pass, JWT secret)
+.env
+.env.*
+!.env.example
+!.env.sample
+*.env
+*.local
+*.pem
+*.key
+*.cert
+*.p12
+
+# Spring Boot Local Profiles (Chứa mật khẩu/cấu hình máy cá nhân dev)
+**/application-local.yaml
+**/application-local.yml
+!**/application-local.yaml.example
+!**/application-local.yml.example
+
+### --- 7. Docker & Kubernetes & Local Dev ---
+docker-compose.override.yml
+docker-compose.local.yml
+*.override.yml
+*.local.yml
+*.local.yaml
+kubeconfig*
+.minikube/
+
+### --- 8. Load Test & Performance Testing (k6, JMeter, Locust) ---
+# Tránh commit file kết quả test tải hàng GB
+results/
+test-results/
+perf-results/
+*.jtl
+jmeter.log
+locust.log
+*.har
+
+### --- 9. Database & Redis Dumps ---
+*.dump
+*.sql.gz
+dump.rdb
+appendonly.aof
+
+### --- 10. Local AI Agent Rules & Configurations ---
+# Quy tắc và cấu hình riêng cho AI Agent trên máy cá nhân
+# AGENTS.md
+Agent.md
+GEMINI.md
+.agents/
