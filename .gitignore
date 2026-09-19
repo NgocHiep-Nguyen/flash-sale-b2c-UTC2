@@ -198,7 +198,7 @@ appendonly.aof
 
 ### --- 10. Local AI Agent Rules & Configurations ---
 # Quy tắc và cấu hình riêng cho AI Agent trên máy cá nhân
-AGENTS.md
+# AGENTS.md
 Agent.md
 GEMINI.md
 .agents/
