@@ -1,0 +1,48 @@
+package com.b2c.flash_sale_b2c_UTC2.product.controller;
+
+import com.b2c.flash_sale_b2c_UTC2.common.api.ApiResponse;
+import com.b2c.flash_sale_b2c_UTC2.common.api.PageResponse;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductDetailResponse;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductFilterRequest;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductSummaryResponse;
+import com.b2c.flash_sale_b2c_UTC2.product.service.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/products")
+@RequiredArgsConstructor
+@Tag(name = "Product - Public API", description = "Xem và tìm kiếm danh mục sản phẩm sàn B2C")
+public class ProductController {
+
+    private final ProductService productService;
+
+    @GetMapping
+    @Operation(summary = "Tìm kiếm & lọc danh sách sản phẩm sàn (Public)",
+               description = "Hỗ trợ lọc theo categoryId, từ khóa keyword, khoảng giá minPrice-maxPrice, phân trang PageResponse")
+    public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getPublicProducts(
+            @ModelAttribute ProductFilterRequest filter,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        PageResponse<ProductSummaryResponse> response = productService.getPublicProducts(filter, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", response));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Xem chi tiết sản phẩm và các biến thể phân loại SKU (Public)",
+               description = "Chỉ trả về sản phẩm ACTIVE của cửa hàng APPROVED")
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> getPublicProductDetail(@PathVariable Long id) {
+        ProductDetailResponse response = productService.getPublicProductDetail(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy chi tiết sản phẩm thành công", response));
+    }
+}

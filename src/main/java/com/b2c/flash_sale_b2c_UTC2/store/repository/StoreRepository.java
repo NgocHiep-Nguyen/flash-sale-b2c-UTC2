@@ -11,4 +11,5 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     Optional<Store> findByUserId(Long userId);
     Optional<Store> findByStoreName(String storeName);
     boolean existsByStoreName(String storeName);
+    boolean existsByUserId(Long userId);
 }

@@ -942,3 +942,125 @@ Không tuyên bố:
 - "10/10"
 
 Phải mô tả chính xác phạm vi đã kiểm tra, kết quả test và limitation còn lại.
+
+---
+
+## 42. AUTH & USER MODULE CONVENTIONS & ENDPOINTS
+
+### 1. JWT Configuration & Security
+- **Header format**: `Authorization: Bearer <access_token>`
+- **Signing Algorithm**: HMAC-SHA256 (HS256).
+- **Secret requirements**: Tối thiểu 32 ký tự (256-bit). Cấu hình qua `jwt.secret` (hoặc biến môi trường `JWT_SECRET`).
+- **Profile local**: Đã cấu hình tại `application-local.yaml` với secret 64 ký tự.
+- **Expiration**:
+  - Access Token: `jwt.expiration-ms` (mặc định 3,600,000 ms = 1 giờ).
+  - Refresh Token: `jwt.refresh-expiration-ms` (mặc định 604,800,000 ms = 7 ngày).
+- **Stateless Authentication**: Sử dụng `JwtAuthenticationFilter`, trả về 401 Unauthorized khi token invalid/expired, 403 Forbidden khi thiếu quyền.
+
+### 2. RBAC Authorities Mapping
+- **Role Authority**: `ROLE_<ROLE_NAME>` (ví dụ `ROLE_BUYER`, `ROLE_SELLER`, `ROLE_ADMIN`).
+- **Permission Authority**: Atomic code (ví dụ `order:create`, `product:read`).
+- **Feature Flag**: Chỉ cấp permission nếu `permissions.is_active == true`.
+- **Principal Context**: `CustomUserDetails` chứa `AuthAccount` (bao gồm `id`, `username`, `email`). Truy xuất ID người dùng hiện tại qua `customUserDetails.getId()`.
+
+### 3. Address Ownership & Invariants
+- **Ownership check bắt buộc**: Mọi thao tác trên address (`GET /addresses/{id}`, `PUT`, `DELETE`, `PATCH default`) phải xác nhận:
+  ```text
+  address.getUser().getId().equals(currentUserId)
+  ```
+  Nếu không khớp, ném lỗi 403 `ADDRESS_ACCESS_DENIED`.
+- **Single Default Address**: Khi đánh dấu một địa chỉ là mặc định (`is_default = true`), toàn bộ các địa chỉ khác của user đó phải chuyển về `is_default = false`.
+- **XOR Constraint**: Địa chỉ của user phải gán `user = currentUser`, `store = null` để thỏa mãn CHECK constraint `chk_address_owner_xor` ở DB.
+
+### 4. API Endpoints List
+
+#### Auth Endpoints (`/api/v1/auth`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Public | Đăng ký tài khoản Buyer mới (`username`, `email`, `password`, `fullName`, `phoneNumber`). |
+| `POST` | `/api/v1/auth/login` | Public | Đăng nhập bằng `usernameOrEmail` + `password`. Trả về `accessToken`, `refreshToken`, user info và roles. |
+| `POST` | `/api/v1/auth/refresh-token` | Public | Cấp lại `accessToken` mới từ `refreshToken` hợp lệ. |
+| `POST` | `/api/v1/auth/logout` | Public | Logout client-side (vô hiệu hóa token phía client). |
+
+#### User Profile Endpoints (`/api/v1/users`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/users/me` | Authenticated | Lấy thông tin profile người dùng hiện tại. |
+| `PUT` | `/api/v1/users/me` | Authenticated | Cập nhật thông tin profile (`fullName`, `phoneNumber`, `avatarUrl`). |
+| `PUT` | `/api/v1/users/me/change-password` | Authenticated | Đổi mật khẩu (`oldPassword`, `newPassword`), xác thực mật khẩu cũ qua BCrypt. |
+
+#### User Address Endpoints (`/api/v1/users/addresses`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/users/addresses` | Authenticated | Lấy danh sách địa chỉ của người dùng hiện tại. |
+| `POST` | `/api/v1/users/addresses` | Authenticated | Thêm mới địa chỉ nhận hàng. |
+| `GET` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Lấy chi tiết một địa chỉ (kiểm tra ownership). |
+| `PUT` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Cập nhật địa chỉ (kiểm tra ownership). |
+| `DELETE` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Xóa địa chỉ (kiểm tra ownership). |
+| `PATCH` | `/api/v1/users/addresses/{id}/default` | Authenticated (Owner) | Đặt địa chỉ làm mặc định (kiểm tra ownership, reset các địa chỉ khác). |
+
+### 5. Store & Warehouse Address Endpoints (`/api/v1/stores` & `/api/v1/admin/stores`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/stores` | Authenticated | Đăng ký mở Store mới (mặc định trạng thái `PENDING`, tự động tạo Wallet 1-1). |
+| `GET` | `/api/v1/stores/me` | Authenticated (Seller) | Lấy thông tin Store của người dùng hiện tại. |
+| `PUT` | `/api/v1/stores/me` | Authenticated (Seller) | Cập nhật thông tin Store (`storeName`, `logoUrl`, `description`). |
+| `GET` | `/api/v1/stores/{id}` | Public | Lấy thông tin công khai của một Store theo ID. |
+| `PATCH` | `/api/v1/admin/stores/{id}/status` | Admin | Duyệt/Khóa Store. Khi duyệt `APPROVED`, tự động gán role `SELLER` cho chủ shop. |
+| `GET` | `/api/v1/stores/me/addresses` | Authenticated (Seller) | Danh sách địa chỉ kho lấy hàng của Store. |
+| `POST` | `/api/v1/stores/me/addresses` | Authenticated (Seller) | Thêm mới địa chỉ kho (thỏa mãn ràng buộc XOR: `user=null`, `store=store`). |
+| `PUT` | `/api/v1/stores/me/addresses/{id}` | Authenticated (Seller) | Cập nhật địa chỉ kho. |
+| `DELETE` | `/api/v1/stores/me/addresses/{id}` | Authenticated (Seller) | Xóa địa chỉ kho của Store. |
+| `PATCH` | `/api/v1/stores/me/addresses/{id}/default` | Authenticated (Seller) | Đặt địa chỉ kho làm mặc định. |
+
+### 6. Category Endpoints (`/api/v1/categories` & `/api/v1/admin/categories`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/categories` | Public | Danh sách cây ngành hàng hiển thị công khai. |
+| `GET` | `/api/v1/categories/{id}` | Public | Chi tiết ngành hàng theo ID. |
+| `POST` | `/api/v1/admin/categories` | Admin | Tạo mới ngành hàng (`name`, `slug`, `parentId`, `imageUrl`). |
+| `PUT` | `/api/v1/admin/categories/{id}` | Admin | Cập nhật ngành hàng. |
+| `DELETE` | `/api/v1/admin/categories/{id}` | Admin | Xóa ngành hàng (chặn nếu đang có ngành hàng con). |
+
+### 7. Product SPU-SKU Module Endpoints (`/api/v1/products` & `/api/v1/seller/products`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/products` | Public | Tìm kiếm, lọc sản phẩm (categoryId, keyword, minPrice, maxPrice), phân trang `PageResponse`. Chỉ trả về product `ACTIVE` của store `APPROVED`. Không bị N+1 nhờ batch fetch variants. |
+| `GET` | `/api/v1/products/{id}` | Public | Chi tiết sản phẩm SPU và danh sách SKU `ACTIVE` (chỉ hiển thị nếu product `ACTIVE` và store `APPROVED`). |
+| `POST` | `/api/v1/seller/products` | Seller | Đăng bán sản phẩm mới SPU-SKU. Kiểm tra store `APPROVED`, validate giá > 0, tồn kho >= 0, SKU unique, số SKU khớp `tier_variation_configs`. |
+| `GET` | `/api/v1/seller/products` | Seller | Lấy danh sách sản phẩm thuộc gian hàng của seller (phân trang, lọc theo status). |
+| `GET` | `/api/v1/seller/products/{id}` | Seller | Chi tiết sản phẩm và toàn bộ biến thể SKU thuộc gian hàng seller (kiểm tra quyền sở hữu store). |
+| `PUT` | `/api/v1/seller/products/{id}` | Seller | Cập nhật SPU và SKUs. Chặn sửa giá hoặc giảm tồn kho nếu SKU đang trong Flash Sale `ACTIVE`. Bảo vệ dữ liệu bằng Khóa Lạc Quan (`@Version` / `V2__`). |
+| `DELETE` | `/api/v1/seller/products/{id}` | Seller | Xóa sản phẩm. Tự động **Soft Delete** (`status = INACTIVE`) nếu SKU đã có trong `order_items` hoặc `flash_sale_items`; **Hard Delete** nếu chưa phát sinh đơn hàng. |
+| `PATCH` | `/api/v1/seller/products/{id}/status` | Seller | Đổi trạng thái sản phẩm (`ACTIVE`, `INACTIVE`, `OUT_OF_STOCK`). |
+
+### 8. Flash Sale Core Module Endpoints & Concurrency Architecture
+- **Boundary rule**: Chỉ thuộc module `flashsale`. Các module `order`, `store`, `voucher`, `cart`, `payment`, `wallet` là read-only.
+- **Tích hợp Module Order**: Thông qua interface `FlashSaleOrderPort` (`createPendingOrder`, `lockExpiredPendingOrders`, `cancelTimeoutIfPending`, `countPendingBySlot`).
+- **Atomic Reservation**: Lua script (`reserve_stock.lua`) trên Redis với key `flash_sale:stock:{itemId}` và `flash_sale:user_limit:{slotId}:{userId}:{itemId}`. Hỗ trợ pluggable `StockReservationStrategy` (Lua script mặc định, Redisson distributed lock so sánh).
+- **Dual-write Compensation**: Khi gọi OrderPort hoặc DB thất bại, tự động kích hoạt bù hoàn Redis (`INCRBY stock`, `DECRBY user_limit`) và DB (`replenishAvailableStockConditionally`).
+- **Jobs nền (Schedulers)**:
+  - `processExpiredReservations` (15s): Quét đơn `PENDING_PAYMENT` quá hạn 300s, chuyển `CANCELLED_TIMEOUT` nguyên tử, hoàn trả chính xác số lượng về Redis và DB.
+  - `processEndedSlotsAndReturnUnsoldStock` (30s): Đóng phiên hết hạn, tự động hoàn trả tồn kho chưa bán (`available_stock`) về kho gốc biến thể `product_variants.stock_quantity`.
+
+#### Flash Sale Admin Endpoints (`/api/v1/admin/flash-sales`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/admin/flash-sales/slots` | Admin | Tạo khung giờ Flash Sale mới (kiểm tra chống overlap thời gian). |
+| `PUT` | `/api/v1/admin/flash-sales/slots/{id}` | Admin | Cập nhật khung giờ Flash Sale (chặn cập nhật phiên đã `ENDED`, kiểm tra overlap). |
+| `GET` | `/api/v1/admin/flash-sales/slots/{id}` | Admin | Xem chi tiết khung giờ Flash Sale. |
+| `GET` | `/api/v1/admin/flash-sales/slots` | Admin | Xem danh sách toàn bộ khung giờ Flash Sale. |
+| `PATCH` | `/api/v1/admin/flash-sales/items/{id}/approve` | Admin | Duyệt SKU đăng ký vào Flash Sale, khấu trừ kho gốc `product_variants.stock_quantity` nguyên tử. |
+| `POST` | `/api/v1/admin/flash-sales/slots/{id}/pre-warm` | Admin | Pre-warm nạp tồn kho lên Redis bằng `SETNX` (idempotent, tính kèm đơn pending). |
+
+#### Flash Sale Seller Endpoints (`/api/v1/seller/flash-sales`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/seller/flash-sales/items` | Seller | Đăng ký biến thể SKU tham gia Flash Sale (`flash_sale_price < original_price`, `allocated_stock <= stock_quantity`). |
+
+#### Flash Sale Public & Reservation Endpoints (`/api/v1/flash-sales`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/flash-sales/slots` | Public | Danh sách phiên sale đang/sắp diễn ra kèm tồn kho thời gian thực từ Redis. |
+| `POST` | `/api/v1/flash-sales/reservations` | Authenticated | Đặt hàng giữ chỗ Flash Sale với `Idempotency-Key`, thực thi Lua script, tạo đơn `PENDING_PAYMENT` qua `FlashSaleOrderPort`. |
+

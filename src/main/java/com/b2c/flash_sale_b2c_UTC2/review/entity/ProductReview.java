@@ -59,7 +59,7 @@ public class ProductReview {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "image_urls", columnDefinition = "jsonb")
-    private String imageUrls;
+    private java.util.List<String> imageUrls;
 
     @Column(name = "seller_reply", columnDefinition = "TEXT")
     private String sellerReply;
