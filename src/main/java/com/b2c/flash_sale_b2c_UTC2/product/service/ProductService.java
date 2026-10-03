@@ -1,0 +1,28 @@
+package com.b2c.flash_sale_b2c_UTC2.product.service;
+
+import com.b2c.flash_sale_b2c_UTC2.common.api.PageResponse;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.CreateProductRequest;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductDetailResponse;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductFilterRequest;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductSummaryResponse;
+import com.b2c.flash_sale_b2c_UTC2.product.dto.UpdateProductRequest;
+import org.springframework.data.domain.Pageable;
+
+public interface ProductService {
+
+    ProductDetailResponse createProduct(Long userId, CreateProductRequest request);
+
+    ProductDetailResponse updateProduct(Long userId, Long productId, UpdateProductRequest request);
+
+    void deleteProduct(Long userId, Long productId);
+
+    ProductDetailResponse updateProductStatus(Long userId, Long productId, String status);
+
+    PageResponse<ProductSummaryResponse> getPublicProducts(ProductFilterRequest filter, Pageable pageable);
+
+    ProductDetailResponse getPublicProductDetail(Long productId);
+
+    PageResponse<ProductSummaryResponse> getSellerProducts(Long userId, String status, Pageable pageable);
+
+    ProductDetailResponse getSellerProductDetail(Long userId, Long productId);
+}

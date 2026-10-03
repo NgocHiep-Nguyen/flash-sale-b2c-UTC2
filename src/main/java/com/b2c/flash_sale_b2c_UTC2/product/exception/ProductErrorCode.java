@@ -17,7 +17,12 @@ public enum ProductErrorCode implements ErrorCode {
     STORE_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "PROD_403_STORE_NOT_ELIGIBLE", "Gian hàng chưa được phê duyệt hoặc không đủ điều kiện đăng bán"),
     SKU_ALREADY_EXISTS(HttpStatus.CONFLICT, "PROD_409_SKU_EXISTS", "Mã SKU này đã tồn tại trong hệ thống"),
     VARIANT_NOT_FOUND(HttpStatus.NOT_FOUND, "PROD_404_VARIANT_NOT_FOUND", "Không tìm thấy biến thể phân loại sản phẩm"),
-    AT_LEAST_ONE_VARIANT_REQUIRED(HttpStatus.BAD_REQUEST, "PROD_400_VARIANTS_REQUIRED", "Sản phẩm phải có ít nhất một biến thể phân loại (SKU)");
+    AT_LEAST_ONE_VARIANT_REQUIRED(HttpStatus.BAD_REQUEST, "PROD_400_VARIANTS_REQUIRED", "Sản phẩm phải có ít nhất một biến thể phân loại (SKU)"),
+    INVALID_TIER_VARIATION(HttpStatus.BAD_REQUEST, "PROD_400_INVALID_TIER_VARIATION", "Số lượng biến thể không khớp với cấu hình phân loại tier_variation_configs"),
+    INVALID_PRODUCT_PRICE(HttpStatus.BAD_REQUEST, "PROD_400_INVALID_PRICE", "Giá bán của biến thể phải lớn hơn 0"),
+    INVALID_STOCK_QUANTITY(HttpStatus.BAD_REQUEST, "PROD_400_INVALID_STOCK", "Số lượng tồn kho không được nhỏ hơn 0"),
+    DUPLICATE_SKU_IN_REQUEST(HttpStatus.BAD_REQUEST, "PROD_400_DUPLICATE_SKU", "Mã SKU không được trùng lặp trong cùng sản phẩm"),
+    VARIANT_IN_ACTIVE_FLASH_SALE(HttpStatus.CONFLICT, "PROD_409_VARIANT_IN_ACTIVE_FLASH_SALE", "Không thể chỉnh sửa giá hoặc tồn kho của biến thể đang tham gia Flash Sale đang hoạt động");
 
     private final HttpStatus httpStatus;
     private final String code;

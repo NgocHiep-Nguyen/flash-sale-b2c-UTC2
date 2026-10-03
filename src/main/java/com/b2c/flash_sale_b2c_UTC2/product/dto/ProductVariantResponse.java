@@ -22,5 +22,6 @@ public class ProductVariantResponse {
     private Integer stockQuantity;
     private String imageUrl;
     private String status;
+    private Long version;
     private Instant createdAt;
 }

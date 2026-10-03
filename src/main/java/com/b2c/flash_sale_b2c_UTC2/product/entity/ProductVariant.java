@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -62,6 +63,11 @@ public class ProductVariant {
     @Column(name = "status", length = 20)
     @Builder.Default
     private String status = "ACTIVE";
+
+    @Version
+    @Column(name = "version", nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 
     @Column(name = "created_at")
     private Instant createdAt;
