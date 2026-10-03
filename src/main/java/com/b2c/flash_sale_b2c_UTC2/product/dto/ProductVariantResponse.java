@@ -17,7 +17,7 @@ public class ProductVariantResponse {
     private Long productId;
     private String sku;
     private String variantName;
-    private String attributes;
+    private java.util.Map<String, String> attributes;
     private BigDecimal originalPrice;
     private Integer stockQuantity;
     private String imageUrl;

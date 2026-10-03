@@ -18,7 +18,7 @@ public class ProductResponse {
     private String name;
     private String imageUrl;
     private String description;
-    private String tierVariationConfigs;
+    private java.util.List<TierVariationConfigDto> tierVariationConfigs;
     private String status;
     private Instant createdAt;
 }
