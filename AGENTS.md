@@ -1034,3 +1034,33 @@ Phải mô tả chính xác phạm vi đã kiểm tra, kết quả test và limi
 | `DELETE` | `/api/v1/seller/products/{id}` | Seller | Xóa sản phẩm. Tự động **Soft Delete** (`status = INACTIVE`) nếu SKU đã có trong `order_items` hoặc `flash_sale_items`; **Hard Delete** nếu chưa phát sinh đơn hàng. |
 | `PATCH` | `/api/v1/seller/products/{id}/status` | Seller | Đổi trạng thái sản phẩm (`ACTIVE`, `INACTIVE`, `OUT_OF_STOCK`). |
 
+### 8. Flash Sale Core Module Endpoints & Concurrency Architecture
+- **Boundary rule**: Chỉ thuộc module `flashsale`. Các module `order`, `store`, `voucher`, `cart`, `payment`, `wallet` là read-only.
+- **Tích hợp Module Order**: Thông qua interface `FlashSaleOrderPort` (`createPendingOrder`, `lockExpiredPendingOrders`, `cancelTimeoutIfPending`, `countPendingBySlot`).
+- **Atomic Reservation**: Lua script (`reserve_stock.lua`) trên Redis với key `flash_sale:stock:{itemId}` và `flash_sale:user_limit:{slotId}:{userId}:{itemId}`. Hỗ trợ pluggable `StockReservationStrategy` (Lua script mặc định, Redisson distributed lock so sánh).
+- **Dual-write Compensation**: Khi gọi OrderPort hoặc DB thất bại, tự động kích hoạt bù hoàn Redis (`INCRBY stock`, `DECRBY user_limit`) và DB (`replenishAvailableStockConditionally`).
+- **Jobs nền (Schedulers)**:
+  - `processExpiredReservations` (15s): Quét đơn `PENDING_PAYMENT` quá hạn 300s, chuyển `CANCELLED_TIMEOUT` nguyên tử, hoàn trả chính xác số lượng về Redis và DB.
+  - `processEndedSlotsAndReturnUnsoldStock` (30s): Đóng phiên hết hạn, tự động hoàn trả tồn kho chưa bán (`available_stock`) về kho gốc biến thể `product_variants.stock_quantity`.
+
+#### Flash Sale Admin Endpoints (`/api/v1/admin/flash-sales`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/admin/flash-sales/slots` | Admin | Tạo khung giờ Flash Sale mới (kiểm tra chống overlap thời gian). |
+| `PUT` | `/api/v1/admin/flash-sales/slots/{id}` | Admin | Cập nhật khung giờ Flash Sale (chặn cập nhật phiên đã `ENDED`, kiểm tra overlap). |
+| `GET` | `/api/v1/admin/flash-sales/slots/{id}` | Admin | Xem chi tiết khung giờ Flash Sale. |
+| `GET` | `/api/v1/admin/flash-sales/slots` | Admin | Xem danh sách toàn bộ khung giờ Flash Sale. |
+| `PATCH` | `/api/v1/admin/flash-sales/items/{id}/approve` | Admin | Duyệt SKU đăng ký vào Flash Sale, khấu trừ kho gốc `product_variants.stock_quantity` nguyên tử. |
+| `POST` | `/api/v1/admin/flash-sales/slots/{id}/pre-warm` | Admin | Pre-warm nạp tồn kho lên Redis bằng `SETNX` (idempotent, tính kèm đơn pending). |
+
+#### Flash Sale Seller Endpoints (`/api/v1/seller/flash-sales`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/seller/flash-sales/items` | Seller | Đăng ký biến thể SKU tham gia Flash Sale (`flash_sale_price < original_price`, `allocated_stock <= stock_quantity`). |
+
+#### Flash Sale Public & Reservation Endpoints (`/api/v1/flash-sales`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/flash-sales/slots` | Public | Danh sách phiên sale đang/sắp diễn ra kèm tồn kho thời gian thực từ Redis. |
+| `POST` | `/api/v1/flash-sales/reservations` | Authenticated | Đặt hàng giữ chỗ Flash Sale với `Idempotency-Key`, thực thi Lua script, tạo đơn `PENDING_PAYMENT` qua `FlashSaleOrderPort`. |
+
