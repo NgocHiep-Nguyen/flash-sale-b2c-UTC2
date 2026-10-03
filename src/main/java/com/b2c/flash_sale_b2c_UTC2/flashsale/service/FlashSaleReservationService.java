@@ -9,11 +9,11 @@ import com.b2c.flash_sale_b2c_UTC2.flashsale.exception.FlashSaleErrorCode;
 import com.b2c.flash_sale_b2c_UTC2.flashsale.port.CreateFlashSaleOrderCommand;
 import com.b2c.flash_sale_b2c_UTC2.flashsale.port.FlashSaleOrderPort;
 import com.b2c.flash_sale_b2c_UTC2.flashsale.port.OrderRef;
+import com.b2c.flash_sale_b2c_UTC2.flashsale.realtime.FlashSaleWsBroadcaster;
 import com.b2c.flash_sale_b2c_UTC2.flashsale.repository.FlashSaleItemRepository;
 import com.b2c.flash_sale_b2c_UTC2.flashsale.strategy.StockReservationStrategy;
 import com.b2c.flash_sale_b2c_UTC2.user.entity.Address;
 import com.b2c.flash_sale_b2c_UTC2.user.repository.AddressRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -26,18 +26,30 @@ import java.time.Instant;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FlashSaleReservationService {
 
     private final FlashSaleItemRepository itemRepository;
     private final AddressRepository addressRepository;
     private final StockReservationStrategy stockReservationStrategy;
+    private final FlashSaleWsBroadcaster wsBroadcaster;
 
-    @Autowired(required = false)
+    @Autowired
     private FlashSaleOrderPort orderPort;
 
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    public FlashSaleReservationService(
+            FlashSaleItemRepository itemRepository,
+            AddressRepository addressRepository,
+            StockReservationStrategy stockReservationStrategy,
+            FlashSaleWsBroadcaster wsBroadcaster) {
+        this.itemRepository = itemRepository;
+        this.addressRepository = addressRepository;
+        this.stockReservationStrategy = stockReservationStrategy;
+        this.wsBroadcaster = wsBroadcaster;
+    }
 
     public static final String IDEMPOTENCY_KEY_PREFIX = "idempotency:reservation:";
 
@@ -127,6 +139,12 @@ public class FlashSaleReservationService {
 
             dbDeducted = true;
 
+            try {
+                wsBroadcaster.broadcastStockUpdate(slot.getId(), item.getId(), item.getAvailableStock());
+            } catch (Exception e) {
+                log.warn("[WS] Failed to broadcast stock update for itemId={}: {}", item.getId(), e.getMessage());
+            }
+
             if (orderPort == null) {
                 log.error("FlashSaleOrderPort is not configured!");
                 throw new BusinessException(FlashSaleErrorCode.ORDER_CREATION_FAILED);
@@ -180,6 +198,17 @@ public class FlashSaleReservationService {
                 }
                 if (dbDeducted) {
                     itemRepository.replenishAvailableStockConditionally(item.getId(), request.getQuantity());
+                }
+                // Broadcast stock restored after compensation
+                try {
+                    itemRepository.findById(item.getId()).ifPresent(i -> {
+                        int restoredStock = i.getAvailableStock();
+                        wsBroadcaster.broadcastStockRestored(
+                                slot.getId(), i.getId(), restoredStock, request.getQuantity());
+                    });
+                } catch (Exception wsEx) {
+                    log.warn("[WS] Failed to broadcast stock restoration for itemId={}: {}",
+                            item.getId(), wsEx.getMessage());
                 }
                 if (idemKey != null && redisTemplate != null) {
                     redisTemplate.delete(idemKey);

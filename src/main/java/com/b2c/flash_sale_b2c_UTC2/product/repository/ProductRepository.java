@@ -20,12 +20,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         JOIN FETCH p.category c
         WHERE p.status = 'ACTIVE'
         AND s.status = 'APPROVED'
-        AND (:categoryId IS NULL OR c.id = :categoryId)
-        AND (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
-        AND (:minPrice IS NULL OR EXISTS (
+        AND (:categoryId < 0 OR c.id = :categoryId)
+        AND (:keyword = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        AND (:minPrice < 0 OR EXISTS (
             SELECT 1 FROM ProductVariant v WHERE v.product.id = p.id AND v.status = 'ACTIVE' AND v.originalPrice >= :minPrice
         ))
-        AND (:maxPrice IS NULL OR EXISTS (
+        AND (:maxPrice < 0 OR EXISTS (
             SELECT 1 FROM ProductVariant v WHERE v.product.id = p.id AND v.status = 'ACTIVE' AND v.originalPrice <= :maxPrice
         ))
     """,
@@ -33,12 +33,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         SELECT count(DISTINCT p) FROM Product p
         WHERE p.status = 'ACTIVE'
         AND p.store.status = 'APPROVED'
-        AND (:categoryId IS NULL OR p.category.id = :categoryId)
-        AND (:keyword IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
-        AND (:minPrice IS NULL OR EXISTS (
+        AND (:categoryId < 0 OR p.category.id = :categoryId)
+        AND (:keyword = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        AND (:minPrice < 0 OR EXISTS (
             SELECT 1 FROM ProductVariant v WHERE v.product.id = p.id AND v.status = 'ACTIVE' AND v.originalPrice >= :minPrice
         ))
-        AND (:maxPrice IS NULL OR EXISTS (
+        AND (:maxPrice < 0 OR EXISTS (
             SELECT 1 FROM ProductVariant v WHERE v.product.id = p.id AND v.status = 'ACTIVE' AND v.originalPrice <= :maxPrice
         ))
     """)
