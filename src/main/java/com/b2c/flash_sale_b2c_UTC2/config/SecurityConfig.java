@@ -73,6 +73,8 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // WebSocket STOMP handshake endpoint (auth xử lý trong HandshakeInterceptor)
+                        .requestMatchers("/ws/**").permitAll()
                         // Public endpoints: Auth APIs
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         // Public endpoints: Xem công khai Store, Category, Product
