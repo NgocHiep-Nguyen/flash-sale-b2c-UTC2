@@ -46,20 +46,6 @@ public class PageResponse<T> {
         return of(page, page.getContent());
     }
 
-    public static <T> PageResponse<T> of(Page<?> page, List<T> items) {
-        return PageResponse.<T>builder()
-                .items(items)
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .isFirst(page.isFirst())
-                .isLast(page.isLast())
-                .hasNext(page.hasNext())
-                .hasPrevious(page.hasPrevious())
-                .build();
-    }
-
     /**
      * Chuyển đổi từ Page gốc kết hợp với danh sách DTO đã được biến đổi.
      */
