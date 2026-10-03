@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -17,6 +18,7 @@ public class OrderResponse {
     private String orderCode;
     private Long buyerId;
     private Long storeId;
+    private String storeName;
     private Long slotId;
     private Long voucherId;
     private String recipientName;
@@ -31,4 +33,6 @@ public class OrderResponse {
     private String status;
     private Instant expiresAt;
     private Instant createdAt;
+    private Instant updatedAt;
+    private List<OrderItemResponse> items;
 }
