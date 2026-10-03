@@ -998,3 +998,39 @@ Phải mô tả chính xác phạm vi đã kiểm tra, kết quả test và limi
 | `PUT` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Cập nhật địa chỉ (kiểm tra ownership). |
 | `DELETE` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Xóa địa chỉ (kiểm tra ownership). |
 | `PATCH` | `/api/v1/users/addresses/{id}/default` | Authenticated (Owner) | Đặt địa chỉ làm mặc định (kiểm tra ownership, reset các địa chỉ khác). |
+
+### 5. Store & Warehouse Address Endpoints (`/api/v1/stores` & `/api/v1/admin/stores`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/stores` | Authenticated | Đăng ký mở Store mới (mặc định trạng thái `PENDING`, tự động tạo Wallet 1-1). |
+| `GET` | `/api/v1/stores/me` | Authenticated (Seller) | Lấy thông tin Store của người dùng hiện tại. |
+| `PUT` | `/api/v1/stores/me` | Authenticated (Seller) | Cập nhật thông tin Store (`storeName`, `logoUrl`, `description`). |
+| `GET` | `/api/v1/stores/{id}` | Public | Lấy thông tin công khai của một Store theo ID. |
+| `PATCH` | `/api/v1/admin/stores/{id}/status` | Admin | Duyệt/Khóa Store. Khi duyệt `APPROVED`, tự động gán role `SELLER` cho chủ shop. |
+| `GET` | `/api/v1/stores/me/addresses` | Authenticated (Seller) | Danh sách địa chỉ kho lấy hàng của Store. |
+| `POST` | `/api/v1/stores/me/addresses` | Authenticated (Seller) | Thêm mới địa chỉ kho (thỏa mãn ràng buộc XOR: `user=null`, `store=store`). |
+| `PUT` | `/api/v1/stores/me/addresses/{id}` | Authenticated (Seller) | Cập nhật địa chỉ kho. |
+| `DELETE` | `/api/v1/stores/me/addresses/{id}` | Authenticated (Seller) | Xóa địa chỉ kho của Store. |
+| `PATCH` | `/api/v1/stores/me/addresses/{id}/default` | Authenticated (Seller) | Đặt địa chỉ kho làm mặc định. |
+
+### 6. Category Endpoints (`/api/v1/categories` & `/api/v1/admin/categories`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/categories` | Public | Danh sách cây ngành hàng hiển thị công khai. |
+| `GET` | `/api/v1/categories/{id}` | Public | Chi tiết ngành hàng theo ID. |
+| `POST` | `/api/v1/admin/categories` | Admin | Tạo mới ngành hàng (`name`, `slug`, `parentId`, `imageUrl`). |
+| `PUT` | `/api/v1/admin/categories/{id}` | Admin | Cập nhật ngành hàng. |
+| `DELETE` | `/api/v1/admin/categories/{id}` | Admin | Xóa ngành hàng (chặn nếu đang có ngành hàng con). |
+
+### 7. Product SPU-SKU Module Endpoints (`/api/v1/products` & `/api/v1/seller/products`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/products` | Public | Tìm kiếm, lọc sản phẩm (categoryId, keyword, minPrice, maxPrice), phân trang `PageResponse`. Chỉ trả về product `ACTIVE` của store `APPROVED`. Không bị N+1 nhờ batch fetch variants. |
+| `GET` | `/api/v1/products/{id}` | Public | Chi tiết sản phẩm SPU và danh sách SKU `ACTIVE` (chỉ hiển thị nếu product `ACTIVE` và store `APPROVED`). |
+| `POST` | `/api/v1/seller/products` | Seller | Đăng bán sản phẩm mới SPU-SKU. Kiểm tra store `APPROVED`, validate giá > 0, tồn kho >= 0, SKU unique, số SKU khớp `tier_variation_configs`. |
+| `GET` | `/api/v1/seller/products` | Seller | Lấy danh sách sản phẩm thuộc gian hàng của seller (phân trang, lọc theo status). |
+| `GET` | `/api/v1/seller/products/{id}` | Seller | Chi tiết sản phẩm và toàn bộ biến thể SKU thuộc gian hàng seller (kiểm tra quyền sở hữu store). |
+| `PUT` | `/api/v1/seller/products/{id}` | Seller | Cập nhật SPU và SKUs. Chặn sửa giá hoặc giảm tồn kho nếu SKU đang trong Flash Sale `ACTIVE`. Bảo vệ dữ liệu bằng Khóa Lạc Quan (`@Version` / `V2__`). |
+| `DELETE` | `/api/v1/seller/products/{id}` | Seller | Xóa sản phẩm. Tự động **Soft Delete** (`status = INACTIVE`) nếu SKU đã có trong `order_items` hoặc `flash_sale_items`; **Hard Delete** nếu chưa phát sinh đơn hàng. |
+| `PATCH` | `/api/v1/seller/products/{id}/status` | Seller | Đổi trạng thái sản phẩm (`ACTIVE`, `INACTIVE`, `OUT_OF_STOCK`). |
+

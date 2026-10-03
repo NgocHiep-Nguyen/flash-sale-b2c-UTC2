@@ -43,8 +43,12 @@ public class PageResponse<T> {
      * Chuyển đổi trực tiếp từ đối tượng Page của Spring Data sang PageResponse.
      */
     public static <T> PageResponse<T> of(Page<T> page) {
+        return of(page, page.getContent());
+    }
+
+    public static <T> PageResponse<T> of(Page<?> page, List<T> items) {
         return PageResponse.<T>builder()
-                .items(page.getContent())
+                .items(items)
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
                 .totalElements(page.getTotalElements())
