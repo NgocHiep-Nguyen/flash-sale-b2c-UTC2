@@ -21,6 +21,14 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
     boolean existsBySkuAndIdNot(String sku, Long id);
 
     @Modifying
-    @Query("UPDATE ProductVariant v SET v.stockQuantity = :newStock WHERE v.id = :id AND v.stockQuantity = :expectedOldStock")
+    @Query("UPDATE ProductVariant v SET v.stockQuantity = :newStock, v.version = v.version + 1 WHERE v.id = :id AND v.stockQuantity = :expectedOldStock")
     int updateStockQuantityConditionally(@Param("id") Long id, @Param("newStock") Integer newStock, @Param("expectedOldStock") Integer expectedOldStock);
+
+    @Modifying
+    @Query("UPDATE ProductVariant v SET v.stockQuantity = v.stockQuantity - :quantity, v.version = v.version + 1 WHERE v.id = :id AND v.stockQuantity >= :quantity")
+    int deductStockQuantityConditionally(@Param("id") Long id, @Param("quantity") Integer quantity);
+
+    @Modifying
+    @Query("UPDATE ProductVariant v SET v.stockQuantity = v.stockQuantity + :quantity, v.version = v.version + 1 WHERE v.id = :id")
+    int replenishStockQuantityConditionally(@Param("id") Long id, @Param("quantity") Integer quantity);
 }

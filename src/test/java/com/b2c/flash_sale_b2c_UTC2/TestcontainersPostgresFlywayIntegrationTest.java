@@ -57,6 +57,12 @@ class TestcontainersPostgresFlywayIntegrationTest {
     @Autowired(required = false)
     private DataSource dataSource;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+
     @Test
     @EnabledIf("isDockerAvailable")
     @DisplayName("Khởi chạy Flyway và xác thực ddl-auto: validate trên PostgreSQL Testcontainers thật")
