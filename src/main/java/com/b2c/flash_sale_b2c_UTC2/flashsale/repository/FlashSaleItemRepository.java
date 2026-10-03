@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface FlashSaleItemRepository extends JpaRepository<FlashSaleItem, Long> {
     Optional<FlashSaleItem> findBySlotIdAndVariantId(Long slotId, Long variantId);
     List<FlashSaleItem> findBySlotIdAndStatus(Long slotId, String status);
+    boolean existsByVariantIdIn(List<Long> variantIds);
 }

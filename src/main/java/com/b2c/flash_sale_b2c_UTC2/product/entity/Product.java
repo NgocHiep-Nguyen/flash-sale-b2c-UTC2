@@ -55,7 +55,7 @@ public class Product {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tier_variation_configs", columnDefinition = "jsonb")
-    private String tierVariationConfigs;
+    private java.util.List<com.b2c.flash_sale_b2c_UTC2.product.dto.TierVariationConfigDto> tierVariationConfigs;
 
     @Column(name = "status", length = 20)
     @Builder.Default

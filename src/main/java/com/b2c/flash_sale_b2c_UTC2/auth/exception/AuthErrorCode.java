@@ -1,0 +1,22 @@
+package com.b2c.flash_sale_b2c_UTC2.auth.exception;
+
+import com.b2c.flash_sale_b2c_UTC2.common.exception.ErrorCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum AuthErrorCode implements ErrorCode {
+
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "AUTH_409_EMAIL", "Email này đã được đăng ký trên hệ thống"),
+    PHONE_ALREADY_EXISTS(HttpStatus.CONFLICT, "AUTH_409_PHONE", "Số điện thoại này đã được sử dụng"),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_401_CREDENTIALS", "Email hoặc mật khẩu không chính xác"),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_401_REFRESH_TOKEN", "Refresh token không hợp lệ hoặc đã hết hạn"),
+    USER_DISABLED(HttpStatus.FORBIDDEN, "AUTH_403_USER_DISABLED", "Tài khoản của bạn đã bị khóa hoặc tạm ngưng"),
+    ROLE_NOT_FOUND(HttpStatus.NOT_FOUND, "AUTH_404_ROLE", "Vai trò yêu cầu không tồn tại trên hệ thống");
+
+    private final HttpStatus httpStatus;
+    private final String code;
+    private final String message;
+}

@@ -942,3 +942,59 @@ Không tuyên bố:
 - "10/10"
 
 Phải mô tả chính xác phạm vi đã kiểm tra, kết quả test và limitation còn lại.
+
+---
+
+## 42. AUTH & USER MODULE CONVENTIONS & ENDPOINTS
+
+### 1. JWT Configuration & Security
+- **Header format**: `Authorization: Bearer <access_token>`
+- **Signing Algorithm**: HMAC-SHA256 (HS256).
+- **Secret requirements**: Tối thiểu 32 ký tự (256-bit). Cấu hình qua `jwt.secret` (hoặc biến môi trường `JWT_SECRET`).
+- **Profile local**: Đã cấu hình tại `application-local.yaml` với secret 64 ký tự.
+- **Expiration**:
+  - Access Token: `jwt.expiration-ms` (mặc định 3,600,000 ms = 1 giờ).
+  - Refresh Token: `jwt.refresh-expiration-ms` (mặc định 604,800,000 ms = 7 ngày).
+- **Stateless Authentication**: Sử dụng `JwtAuthenticationFilter`, trả về 401 Unauthorized khi token invalid/expired, 403 Forbidden khi thiếu quyền.
+
+### 2. RBAC Authorities Mapping
+- **Role Authority**: `ROLE_<ROLE_NAME>` (ví dụ `ROLE_BUYER`, `ROLE_SELLER`, `ROLE_ADMIN`).
+- **Permission Authority**: Atomic code (ví dụ `order:create`, `product:read`).
+- **Feature Flag**: Chỉ cấp permission nếu `permissions.is_active == true`.
+- **Principal Context**: `CustomUserDetails` chứa `AuthAccount` (bao gồm `id`, `username`, `email`). Truy xuất ID người dùng hiện tại qua `customUserDetails.getId()`.
+
+### 3. Address Ownership & Invariants
+- **Ownership check bắt buộc**: Mọi thao tác trên address (`GET /addresses/{id}`, `PUT`, `DELETE`, `PATCH default`) phải xác nhận:
+  ```text
+  address.getUser().getId().equals(currentUserId)
+  ```
+  Nếu không khớp, ném lỗi 403 `ADDRESS_ACCESS_DENIED`.
+- **Single Default Address**: Khi đánh dấu một địa chỉ là mặc định (`is_default = true`), toàn bộ các địa chỉ khác của user đó phải chuyển về `is_default = false`.
+- **XOR Constraint**: Địa chỉ của user phải gán `user = currentUser`, `store = null` để thỏa mãn CHECK constraint `chk_address_owner_xor` ở DB.
+
+### 4. API Endpoints List
+
+#### Auth Endpoints (`/api/v1/auth`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Public | Đăng ký tài khoản Buyer mới (`username`, `email`, `password`, `fullName`, `phoneNumber`). |
+| `POST` | `/api/v1/auth/login` | Public | Đăng nhập bằng `usernameOrEmail` + `password`. Trả về `accessToken`, `refreshToken`, user info và roles. |
+| `POST` | `/api/v1/auth/refresh-token` | Public | Cấp lại `accessToken` mới từ `refreshToken` hợp lệ. |
+| `POST` | `/api/v1/auth/logout` | Public | Logout client-side (vô hiệu hóa token phía client). |
+
+#### User Profile Endpoints (`/api/v1/users`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/users/me` | Authenticated | Lấy thông tin profile người dùng hiện tại. |
+| `PUT` | `/api/v1/users/me` | Authenticated | Cập nhật thông tin profile (`fullName`, `phoneNumber`, `avatarUrl`). |
+| `PUT` | `/api/v1/users/me/change-password` | Authenticated | Đổi mật khẩu (`oldPassword`, `newPassword`), xác thực mật khẩu cũ qua BCrypt. |
+
+#### User Address Endpoints (`/api/v1/users/addresses`)
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/users/addresses` | Authenticated | Lấy danh sách địa chỉ của người dùng hiện tại. |
+| `POST` | `/api/v1/users/addresses` | Authenticated | Thêm mới địa chỉ nhận hàng. |
+| `GET` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Lấy chi tiết một địa chỉ (kiểm tra ownership). |
+| `PUT` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Cập nhật địa chỉ (kiểm tra ownership). |
+| `DELETE` | `/api/v1/users/addresses/{id}` | Authenticated (Owner) | Xóa địa chỉ (kiểm tra ownership). |
+| `PATCH` | `/api/v1/users/addresses/{id}/default` | Authenticated (Owner) | Đặt địa chỉ làm mặc định (kiểm tra ownership, reset các địa chỉ khác). |
