@@ -25,6 +25,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	// WebSocket STOMP + SockJS (realtime stock push)
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	// Spring Boot Actuator (health check cho Docker)
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0'
 	// Redis (Lettuce + Lua Scripting Core)
