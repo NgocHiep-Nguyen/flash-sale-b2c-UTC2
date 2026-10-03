@@ -50,7 +50,7 @@ public class FlashSaleWsBroadcaster {
                 .occurredAt(Instant.now())
                 .build();
 
-        String dest = "/topic/flash-sale/slot/" + slotId + "/stock-update";
+        String dest = WsDestinations.slotStockUpdate(slotId);
         sendToTopic(dest, event);
         log.debug("[WS] Broadcast STOCK_DECREMENTED to {}: itemId={}, stock={}",
                 dest, itemId, availableStock);
@@ -67,7 +67,7 @@ public class FlashSaleWsBroadcaster {
                 .occurredAt(Instant.now())
                 .build();
 
-        String dest = "/topic/flash-sale/slot/" + slotId + "/stock-update";
+        String dest = WsDestinations.slotStockUpdate(slotId);
         sendToTopic(dest, event);
         log.debug("[WS] Broadcast STOCK_RESTORED to {}: itemId={}, stock={}, restored={}",
                 dest, itemId, availableStock, restoredQuantity);
@@ -83,7 +83,7 @@ public class FlashSaleWsBroadcaster {
                 .occurredAt(Instant.now())
                 .build();
 
-        String dest = "/topic/flash-sale/slot/" + slotId + "/stock-update";
+        String dest = WsDestinations.slotStockUpdate(slotId);
         sendToTopic(dest, event);
         log.debug("[WS] Broadcast STOCK_RETURNED_UNSOLD to {}: itemId={}, stock={}",
                 dest, itemId, availableStock);
@@ -102,7 +102,7 @@ public class FlashSaleWsBroadcaster {
                 .occurredAt(Instant.now())
                 .build();
 
-        String dest = "/topic/flash-sale/slot/" + slotId + "/status";
+        String dest = WsDestinations.slotStatus(slotId);
         sendToTopic(dest, event);
         log.debug("[WS] Broadcast slot status {} to {}: slotId={}", newStatus, dest, slotId);
     }
@@ -114,7 +114,7 @@ public class FlashSaleWsBroadcaster {
      * /user/{username}/queue/flash-sale/reservation-result
      */
     public void sendReservationResultToUser(String username, FlashSaleWsEvent event) {
-        String dest = "/queue/flash-sale/reservation-result";
+        String dest = WsDestinations.reservationResult();
         sendToUser(username, dest, event);
         log.debug("[WS] Send ORDER_RESERVED to user {}: orderCode={}", username, event.getOrderCode());
     }
@@ -124,7 +124,7 @@ public class FlashSaleWsBroadcaster {
      * /user/{username}/queue/orders/{orderCode}/updates
      */
     public void sendOrderCancelledToUser(String username, FlashSaleWsEvent event) {
-        String dest = "/queue/orders/" + event.getOrderCode() + "/updates";
+        String dest = WsDestinations.orderUpdates(event.getOrderCode());
         sendToUser(username, dest, event);
         log.debug("[WS] Send ORDER_CANCELLED_TIMEOUT to user {}: orderCode={}",
                 username, event.getOrderCode());
