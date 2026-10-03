@@ -122,9 +122,20 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        String normalizedEmail = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
+        String input = request.getUsernameOrEmail() == null ? "" : request.getUsernameOrEmail().trim();
+        if (input.isEmpty()) {
+            throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        User user;
+        if (input.contains("@")) {
+            String normalizedEmail = input.toLowerCase();
+            user = userRepository.findByEmail(normalizedEmail)
+                    .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
+        } else {
+            user = userRepository.findByPhone(input)
+                    .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);

@@ -268,11 +268,20 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductSummaryResponse> getPublicProducts(ProductFilterRequest filter, Pageable pageable) {
+        // NOTE: Sentinel values to avoid Hibernate binding null as bytea (Hibernate6 + Postgres driver bug).
+        // JPQL uses `:categoryId < 0`, `:keyword = ''`, `:minPrice < 0`, `:maxPrice < 0` as "filter disabled" markers.
+        Integer categoryId = (filter.getCategoryId() != null && filter.getCategoryId() > 0)
+                ? filter.getCategoryId() : -1;
+        String keyword = (filter.getKeyword() != null && !filter.getKeyword().isBlank())
+                ? filter.getKeyword().trim() : "";
+        BigDecimal minPrice = filter.getMinPrice() != null ? filter.getMinPrice() : BigDecimal.valueOf(-1);
+        BigDecimal maxPrice = filter.getMaxPrice() != null ? filter.getMaxPrice() : BigDecimal.valueOf(-1);
+
         Page<Product> productPage = productRepository.findPublicProducts(
-                filter.getCategoryId(),
-                filter.getKeyword() != null && !filter.getKeyword().isBlank() ? filter.getKeyword().trim() : null,
-                filter.getMinPrice(),
-                filter.getMaxPrice(),
+                categoryId,
+                keyword,
+                minPrice,
+                maxPrice,
                 pageable
         );
 
