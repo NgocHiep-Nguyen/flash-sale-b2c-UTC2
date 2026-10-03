@@ -1,7 +1,7 @@
 package com.b2c.flash_sale_b2c_UTC2.config.realtime;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -19,6 +19,14 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  *   <li>Broker prefix private: {@code /user} (order result cho riêng user)</li>
  * </ul>
  *
+ * <p>
+ * <b>Lưu ý về TaskScheduler:</b> Dùng {@link ObjectProvider} để lookup
+ * {@code messageBrokerTaskScheduler} (default bean do {@code @EnableWebSocketMessageBroker}
+ * tạo ra) một cách lazy. Tránh circular dependency giữa {@code WebSocketConfig}
+ * và {@code DelegatingWebSocketMessageBrokerConfiguration} nếu inject trực tiếp
+ * qua constructor.
+ * </p>
+ *
  * JWT auth được xử lý trong {@link WebSocketAuthConfig} thông qua
  * {@code ?token=<jwt>} query param tại handshake (browser không set được
  * {@code Authorization} header khi upgrade WebSocket).
@@ -31,22 +39,17 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final HandshakeAuthInterceptor handshakeAuthInterceptor;
-
-    /**
-     * Dedicated TaskScheduler bean từ {@link WebSocketSchedulerConfig}
-     * dùng cho STOMP heartbeats.
-     */
-    @Qualifier("webSocketTaskScheduler")
-    private final TaskScheduler webSocketTaskScheduler;
+    private final ObjectProvider<TaskScheduler> taskSchedulerProvider;
 
     @Override
     public void configureMessageBroker(@NonNull MessageBrokerRegistry registry) {
         // Prefix cho messages gửi từ server → client (subscribe)
         // /topic/flash-sale/slot/1/stock-update  → client subscribe
         // /user/queue/orders/{orderCode}/updates   → private cho từng user
+        TaskScheduler scheduler = taskSchedulerProvider.getIfAvailable();
         registry.enableSimpleBroker("/topic", "/user")
                 .setHeartbeatValue(new long[]{10_000, 10_000})
-                .setTaskScheduler(webSocketTaskScheduler);
+                .setTaskScheduler(scheduler);
 
         // Prefix cho messages gửi từ client → server (@MessageMapping)
         // Client gửi:  /app/flash-sale.reservation
