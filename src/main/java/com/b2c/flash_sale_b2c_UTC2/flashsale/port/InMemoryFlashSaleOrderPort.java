@@ -42,7 +42,7 @@ public class InMemoryFlashSaleOrderPort implements FlashSaleOrderPort {
                 orderId,
                 cmd.orderCode(),
                 cmd.flashSaleItemId(),
-                null, // slotId sẽ được resolve hoặc truyền nếu cần
+                cmd.slotId(),
                 cmd.userId(),
                 cmd.quantity(),
                 "PENDING_PAYMENT",

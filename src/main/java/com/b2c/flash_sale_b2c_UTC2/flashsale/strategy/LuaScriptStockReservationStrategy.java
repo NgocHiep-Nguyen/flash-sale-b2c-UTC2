@@ -17,6 +17,7 @@ public class LuaScriptStockReservationStrategy implements StockReservationStrate
 
     private final StringRedisTemplate redisTemplate;
     private final DefaultRedisScript<Long> reserveScript;
+    private final DefaultRedisScript<Long> rollbackScript;
 
     public static final String STOCK_KEY_PREFIX = "flash_sale:stock:";
     public static final String USER_LIMIT_KEY_PREFIX = "flash_sale:user_limit:";
@@ -27,6 +28,10 @@ public class LuaScriptStockReservationStrategy implements StockReservationStrate
         this.reserveScript = new DefaultRedisScript<>();
         this.reserveScript.setLocation(new ClassPathResource("lua/reserve_stock.lua"));
         this.reserveScript.setResultType(Long.class);
+
+        this.rollbackScript = new DefaultRedisScript<>();
+        this.rollbackScript.setLocation(new ClassPathResource("lua/rollback_stock.lua"));
+        this.rollbackScript.setResultType(Long.class);
     }
 
     @Override
@@ -48,16 +53,13 @@ public class LuaScriptStockReservationStrategy implements StockReservationStrate
                     String.valueOf(Math.max(slotRemainingTtlSeconds, 60))
             );
 
-            if (result == null) {
-                return 0;
+            if (result == null || result == -2) {
+                return 0; // out of stock
             }
             if (result == -1) {
                 return -1; // user limit exceeded
             }
-            if (result == 0 && !hasStockInRedis(stockKey)) {
-                return 0; // out of stock
-            }
-            return 1; // success
+            return 1; // success (result >= 0)
         } catch (Exception e) {
             log.error("Error executing reserve_stock.lua for item ID: {}, user ID: {}: {}", itemId, userId, e.getMessage());
             throw e;
@@ -91,6 +93,34 @@ public class LuaScriptStockReservationStrategy implements StockReservationStrate
             log.info("Compensated Redis stock (+{}) and limit for FlashSaleItem ID: {}, user ID: {}", quantity, itemId, userId);
         } catch (Exception e) {
             log.error("Failed to compensate Redis for item ID: {}, user ID: {}: {}", itemId, userId, e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void rollbackStockSafe(Long slotId, Long userId, Long itemId, int quantity, int fallbackStock, long remainingTtlSeconds) {
+        if (redisTemplate == null) {
+            return;
+        }
+
+        String stockKey = STOCK_KEY_PREFIX + itemId;
+        String userLimitKey = USER_LIMIT_KEY_PREFIX + slotId + ":" + userId + ":" + itemId;
+
+        try {
+            Long result = redisTemplate.execute(
+                    rollbackScript,
+                    List.of(stockKey),
+                    String.valueOf(quantity),
+                    String.valueOf(fallbackStock),
+                    String.valueOf(Math.max(remainingTtlSeconds, 60))
+            );
+            log.info("Safe rollback of stock executed for item ID: {}. Redis stock is now: {}", itemId, result);
+
+            Long remainingLimit = redisTemplate.opsForValue().decrement(userLimitKey, quantity);
+            if (remainingLimit != null && remainingLimit <= 0) {
+                redisTemplate.delete(userLimitKey);
+            }
+        } catch (Exception e) {
+            log.error("Failed to execute safe rollback for item ID: {}, user ID: {}: {}", itemId, userId, e.getMessage(), e);
         }
     }
 }

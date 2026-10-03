@@ -13,7 +13,7 @@ end
 -- Bước 2: Kiểm tra tồn kho khả dụng
 local current_stock = redis.call('GET', KEYS[1])
 if not current_stock or tonumber(current_stock) < tonumber(ARGV[1]) then
-    return 0 -- Mã lỗi: Hết hàng hoặc không đủ số lượng yêu cầu
+    return -2 -- Mã lỗi: Hết hàng hoặc không đủ số lượng yêu cầu
 end
 
 -- Bước 3: Trừ tồn kho nguyên tử & Tăng số lượng user đã giữ chỗ

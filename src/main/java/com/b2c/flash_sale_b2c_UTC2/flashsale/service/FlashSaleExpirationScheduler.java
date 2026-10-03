@@ -42,6 +42,7 @@ public class FlashSaleExpirationScheduler {
      * Chạy định kỳ mỗi 15 giây.
      */
     @Scheduled(fixedDelay = 15000)
+    @Transactional
     public void processExpiredReservations() {
         if (orderPort == null) {
             return;
@@ -80,11 +81,32 @@ public class FlashSaleExpirationScheduler {
         log.info("Rolling back stock for expired order ID: {}, item ID: {}, qty: {}",
                 ref.orderId(), ref.flashSaleItemId(), ref.quantity());
 
-        // 1. Rollback cache stock and purchase limit
-        stockReservationStrategy.compensate(ref.slotId(), ref.userId(), ref.flashSaleItemId(), ref.quantity());
-
-        // 2. Rollback DB available_stock conditionally (available_stock + qty <= allocated_stock)
+        // 1. Rollback DB available_stock conditionally (available_stock + qty <= allocated_stock)
         itemRepository.replenishAvailableStockConditionally(ref.flashSaleItemId(), ref.quantity());
+
+        // 2. Safe rollback of Redis stock and purchase limit (verifying key existence or reconstructing from DB)
+        FlashSaleItem item = itemRepository.findById(ref.flashSaleItemId()).orElse(null);
+        if (item != null) {
+            long remainingPending = 0;
+            if (orderPort != null && ref.slotId() != null) {
+                remainingPending = orderPort.countPendingBySlot(ref.slotId());
+            }
+            int fallbackStock = item.getAvailableStock() + (int) remainingPending;
+            long remainingTtlSeconds = item.getSlot() != null 
+                    ? java.time.Duration.between(Instant.now(), item.getSlot().getEndTime()).getSeconds() 
+                    : 300;
+
+            stockReservationStrategy.rollbackStockSafe(
+                    ref.slotId(),
+                    ref.userId(),
+                    ref.flashSaleItemId(),
+                    ref.quantity(),
+                    fallbackStock,
+                    remainingTtlSeconds
+            );
+        } else {
+            stockReservationStrategy.compensate(ref.slotId(), ref.userId(), ref.flashSaleItemId(), ref.quantity());
+        }
     }
 
     /**

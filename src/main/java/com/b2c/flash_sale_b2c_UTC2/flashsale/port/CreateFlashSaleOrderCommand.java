@@ -10,6 +10,7 @@ public record CreateFlashSaleOrderCommand(
         Long userId,
         Long addressId,
         Long flashSaleItemId,
+        Long slotId,
         Long variantId,
         Long storeId,
         Integer quantity,

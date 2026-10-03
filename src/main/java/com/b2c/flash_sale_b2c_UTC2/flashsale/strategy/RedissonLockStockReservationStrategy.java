@@ -103,4 +103,32 @@ public class RedissonLockStockReservationStrategy implements StockReservationStr
             log.error("Failed to compensate in Redisson strategy for item ID: {}, user ID: {}: {}", itemId, userId, e.getMessage(), e);
         }
     }
+
+    @Override
+    public void rollbackStockSafe(Long slotId, Long userId, Long itemId, int quantity, int fallbackStock, long remainingTtlSeconds) {
+        if (redisTemplate == null) {
+            return;
+        }
+
+        String stockKey = STOCK_KEY_PREFIX + itemId;
+        String userLimitKey = USER_LIMIT_KEY_PREFIX + slotId + ":" + userId + ":" + itemId;
+
+        Boolean exists = redisTemplate.hasKey(stockKey);
+        if (Boolean.TRUE.equals(exists)) {
+            redisTemplate.opsForValue().increment(stockKey, quantity);
+        } else {
+            if (fallbackStock >= 0) {
+                if (remainingTtlSeconds > 0) {
+                    redisTemplate.opsForValue().set(stockKey, String.valueOf(fallbackStock), Duration.ofSeconds(remainingTtlSeconds));
+                } else {
+                    redisTemplate.opsForValue().set(stockKey, String.valueOf(fallbackStock));
+                }
+            }
+        }
+
+        Long remainingLimit = redisTemplate.opsForValue().decrement(userLimitKey, quantity);
+        if (remainingLimit != null && remainingLimit <= 0) {
+            redisTemplate.delete(userLimitKey);
+        }
+    }
 }

@@ -18,4 +18,9 @@ public interface StockReservationStrategy {
      * Compensates (rolls back) the reservation in cache if downstream actions fail.
      */
     void compensate(Long slotId, Long userId, Long itemId, int quantity);
+
+    /**
+     * Safe rollback of stock that prevents orphan INCRBY on non-existent keys.
+     */
+    void rollbackStockSafe(Long slotId, Long userId, Long itemId, int quantity, int fallbackStock, long remainingTtlSeconds);
 }

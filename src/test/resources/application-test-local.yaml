@@ -3,8 +3,12 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/flash_sale_test
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD:root}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 60000
   jpa:
     hibernate:
       ddl-auto: validate

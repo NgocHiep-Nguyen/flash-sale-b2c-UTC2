@@ -29,6 +29,7 @@ public enum FlashSaleErrorCode implements ErrorCode {
     PURCHASE_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "FS_409_PURCHASE_LIMIT_EXCEEDED", "Bạn đã vượt quá giới hạn số lượng mua cho sản phẩm này trong phiên Flash Sale"),
     ADDRESS_NOT_FOUND_OR_NOT_OWNED(HttpStatus.FORBIDDEN, "FS_403_ADDRESS_INVALID", "Địa chỉ giao hàng không hợp lệ hoặc không thuộc về người dùng"),
     IDEMPOTENCY_KEY_MISSING(HttpStatus.BAD_REQUEST, "FS_400_IDEMPOTENCY_KEY_MISSING", "Yêu cầu thiếu Idempotency-Key"),
+    IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "FS_409_IDEMPOTENCY_CONFLICT", "Yêu cầu với Idempotency-Key này đang được xử lý, vui lòng không gửi lặp lại"),
     ORDER_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FS_500_ORDER_FAILED", "Hệ thống bận khi khởi tạo đơn hàng Flash Sale");
 
     private final HttpStatus httpStatus;
