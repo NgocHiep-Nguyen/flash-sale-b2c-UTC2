@@ -1064,3 +1064,111 @@ Phải mô tả chính xác phạm vi đã kiểm tra, kết quả test và limi
 | `GET` | `/api/v1/flash-sales/slots` | Public | Danh sách phiên sale đang/sắp diễn ra kèm tồn kho thời gian thực từ Redis. |
 | `POST` | `/api/v1/flash-sales/reservations` | Authenticated | Đặt hàng giữ chỗ Flash Sale với `Idempotency-Key`, thực thi Lua script, tạo đơn `PENDING_PAYMENT` qua `FlashSaleOrderPort`. |
 
+---
+
+## 43. REALTIME WEBSOCKET (STOMP + SOCKJS)
+
+### 1. Tổng quan
+
+Realtime channel phục vụ push event cho client (stock update, slot status, order result). Không thay thế HTTP REST — chỉ bổ sung lớp notification.
+
+**Stack**: Spring WebSocket + STOMP + SockJS.
+
+**Endpoint handshake**: `ws://host/ws` (SockJS fallback: `http://host/ws/...`).
+
+### 2. Cấu hình chính
+
+| File | Vai trò |
+| :--- | :--- |
+| `config/realtime/WebSocketConfig.java` | Broker prefix `/topic`, `/user`; heartbeat 10s |
+| `config/realtime/HandshakeAuthInterceptor.java` | Đọc JWT từ `?token=` query param |
+| `config/realtime/WebSocketAuthConfig.java` | Reload authorities qua `UserDetailsService` tại CONNECT |
+| `config/realtime/WebSocketSchedulerConfig.java` | Dedicated `TaskScheduler` cho STOMP heartbeat |
+| `config/realtime/WsSessionEventListener.java` | Log lifecycle events + đếm active sessions |
+| `config/CorsConfig.java` | CORS mapping `/ws/**` |
+| `config/SecurityConfig.java` | `permitAll()` cho `/ws/**` (auth xử lý trong interceptor) |
+
+### 3. Auth flow (browser → server)
+
+```text
+Browser:  new WebSocket('/ws?token=<JWT>')
+           │
+           ▼
+HandshakeAuthInterceptor
+           │ validate JWT, set Principal vào session attributes
+           ▼
+WebSocket connected → STOMP CONNECT frame
+           │
+           ▼
+WebSocketAuthConfig (ChannelInterceptor preSend)
+           │ reload UserDetails, gán vào STOMP accessor
+           ▼
+Authenticated session — sẵn sàng SUBSCRIBE / SEND
+```
+
+Lý do dùng query param thay vì header: browser không cho set `Authorization` khi upgrade WebSocket.
+
+### 4. WS Destinations (single source of truth)
+
+Mọi URL pattern phải build qua class `flashsale.realtime.WsDestinations`. Không hard-code URL rải rác trong service.
+
+#### Public topic (broadcast, ai cũng subscribe được):
+
+| Method | Destination | Mô tả |
+| :--- | :--- | :--- |
+| `itemStock(itemId)` | `/topic/flash-sale/item/{itemId}/stock` | Stock realtime cho 1 SKU |
+| `slotStockUpdate(slotId)` | `/topic/flash-sale/slot/{slotId}/stock-update` | Stock thay đổi trong slot |
+| `slotStatus(slotId)` | `/topic/flash-sale/slot/{slotId}/status` | Slot chuyển trạng thái |
+
+#### Private queue (per-user, Spring prefix `/user/{username}`):
+
+| Method | Destination (resolved) | Mô tả |
+| :--- | :--- | :--- |
+| `reservationResult()` | `/user/{username}/queue/flash-sale/reservation-result` | Kết quả reservation riêng user |
+| `orderUpdates(orderCode)` | `/user/{username}/queue/flash-sale/orders/{orderCode}/updates` | Update riêng cho 1 đơn |
+
+### 5. Payload format
+
+Tất cả event đều wrap trong `ApiResponse<T>` chung của project. Body payload là `FlashSaleWsEvent`:
+
+```java
+FlashSaleWsEvent {
+  EventType eventType;          // STOCK_DECREMENTED, ORDER_RESERVED, ...
+  Long slotId, flashSaleItemId, orderId, userId;
+  Integer availableStock, allocatedStock, quantity, restoredQuantity;
+  Long totalAmount;
+  String orderCode, slotStatus;
+  Instant expiresAt, occurredAt;
+}
+
+enum EventType {
+  STOCK_DECREMENTED,
+  STOCK_RESTORED,
+  STOCK_RETURNED_UNSOLD,
+  SLOT_ACTIVATED,
+  SLOT_CLOSED,
+  ORDER_RESERVED,
+  ORDER_CANCELLED_TIMEOUT
+}
+```
+
+### 6. Broadcaster layer
+
+`FlashSaleWsBroadcaster` là service duy nhất gọi `SimpMessagingTemplate`. Mọi service khác muốn push realtime phải inject broadcaster, không gọi trực tiếp `convertAndSend`.
+
+Các method chính:
+- `broadcastStockUpdate(slotId, itemId, availableStock)`
+- `broadcastStockRestored(slotId, itemId, availableStock, restoredQuantity)`
+- `broadcastUnsoldStockReturned(slotId, itemId, availableStock)`
+- `broadcastSlotStatus(slotId, newStatus)`
+- `sendReservationResultToUser(username, event)`
+- `sendOrderCancelledToUser(username, event)`
+
+### 7. Quy tắc khi dùng WS trong business flow
+
+- WS **chỉ là thông báo**. Không để client quyết định logic dựa trên WS message.
+- Stock đếm vẫn lấy từ Redis (`GET flash_sale:stock:{itemId}`) làm source of truth.
+- DB không phụ thuộc WS — nếu WS message bị miss (network), client vẫn get đúng stock qua REST.
+- Không queue message khi user offline (`SimpMessagingTemplate` mặc định).
+- Heartbeat 10s cả 2 chiều, dedicated scheduler pool (xem `application-websocket.yaml`).
+

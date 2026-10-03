@@ -1,0 +1,10 @@
+# ===================================================================
+# Flash Sale B2C - WebSocket Configuration
+# Cấu hình cho STOMP + SockJS realtime channel
+# ===================================================================
+
+websocket:
+  # Thread pool riêng cho STOMP heartbeat scheduler
+  scheduler:
+    pool-size: 2
+    thread-name-prefix: "ws-scheduler-"

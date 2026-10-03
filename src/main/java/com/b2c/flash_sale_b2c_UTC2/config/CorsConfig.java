@@ -18,5 +18,14 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
+
+        // WebSocket SockJS transport cần riêng CORS config
+        // (SockJS dùng iframe + xhr-streaming có thể trigger preflight)
+        registry.addMapping("/ws/**")
+                .allowedOriginPatterns("http://localhost:3000", "http://127.0.0.1:3000")
+                .allowedMethods("GET", "POST")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }
