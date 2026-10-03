@@ -59,4 +59,21 @@ public class PageResponse<T> {
                 .hasPrevious(page.hasPrevious())
                 .build();
     }
+
+    /**
+     * Chuyển đổi từ Page gốc kết hợp với danh sách DTO đã được biến đổi.
+     */
+    public static <T> PageResponse<T> of(Page<?> page, List<T> content) {
+        return PageResponse.<T>builder()
+                .items(content)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .isFirst(page.isFirst())
+                .isLast(page.isLast())
+                .hasNext(page.hasNext())
+                .hasPrevious(page.hasPrevious())
+                .build();
+    }
 }
