@@ -9,9 +9,10 @@ spring:
     activate:
       on-profile: prod
 
-  # --- Kết nối CSDL PostgreSQL Production ---
+  # --- Kết nối CSDL PostgreSQL Production (Supabase Cloud) ---
+  # sslmode=require BẮT BUỘC với Supabase.
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:flash_sale_db}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:flash_sale_db}?sslmode=require
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -31,13 +32,45 @@ spring:
       hibernate:
         format_sql: false
 
-  # --- Cấu hình Redis Production (Redis Cluster hoặc Master-Replica) ---
+  # --- Cấu hình Redis Production ---
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
+
+  # --- Flyway vẫn chạy migration khi deploy lên prod ---
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# --- CORS: đọc từ env var CORS_ALLOWED_ORIGINS (comma-separated) ---
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+# --- Spring Boot Actuator (health check cho Docker) ---
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+
+# --- Cloudinary (lưu trữ ảnh) ---
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  folder: ${CLOUDINARY_FOLDER:flash-sale-b2c/prod}
 
 # --- Logging tối ưu cho môi trường Production ---
 logging:
@@ -46,3 +79,6 @@ logging:
     com.b2c: INFO
     org.springframework.web: WARN
     org.hibernate: WARN
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
