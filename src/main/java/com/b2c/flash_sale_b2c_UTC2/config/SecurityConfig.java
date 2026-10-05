@@ -93,6 +93,11 @@ public class SecurityConfig {
                                 "/v3/api-docs",
                                 "/error"
                         ).permitAll()
+                        // Actuator health/info — Docker healthcheck gọi không có JWT.
+                        // Phải permitAll, nếu không /actuator/health trả 401 →
+                        // container luôn unhealthy → nginx (depends_on: service_healthy)
+                        // không khởi động → toàn bộ stack sập.
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         // Tất cả các request còn lại bắt buộc phải xác thực qua JWT
                         .anyRequest().authenticated()
                 );
