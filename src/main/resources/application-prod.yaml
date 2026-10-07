@@ -40,11 +40,8 @@ spring:
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
 
-  # --- Flyway vẫn chạy migration khi deploy lên prod ---
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
+  # Flyway: dùng config từ application.yaml (enabled/baseline/locations).
+  # Cấu hình JPA/Flyway khác base đều không cần khai báo lại ở đây.
 
 # --- CORS: đọc từ env var CORS_ALLOWED_ORIGINS (comma-separated) ---
 cors:
@@ -82,3 +79,12 @@ logging:
     org.flywaydb: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# ===================================================================
+# BẮT BUỘC set các env var sau khi deploy production:
+#   DB_USERNAME, DB_PASSWORD (Supabase)
+#   REDIS_PASSWORD (nếu Redis có auth)
+#   JWT_SECRET (>= 64 ký tự)              -- JwtAuthenticationFilter sẽ fail nếu rỗng
+#   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+#   CORS_ALLOWED_ORIGINS (vd: https://your-frontend.com,https://admin.your-frontend.com)
+# ===================================================================

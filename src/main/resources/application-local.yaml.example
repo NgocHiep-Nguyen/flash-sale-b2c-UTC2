@@ -1,31 +1,66 @@
 # ===================================================================
 # Flash Sale B2C - Profile local cho moi truong phat trien
-# Copy file nay thanh application-local.yaml roi dien secret thaym jen
-# application-local.yaml KHONG commit (da duoc .gitignore che)
+# Copy file nay thanh application-local.yaml roi dien secret thay vao.
+# application-local.yaml KHONG commit (da duoc .gitignore che).
+#
+# Cau truc nay MIRROR DUNG application-local.yaml.
+# Moi key co comment # TODO ... la nhung thong tin ban can tu dien.
 # ===================================================================
 
 spring:
+  config:
+    activate:
+      on-profile: local
+
+  # --- Ket noi CSDL PostgreSQL ---
+  # TODO: Thay bang DB local cua ban (hoac Supabase Pooler URL neu dung cloud dev DB).
   datasource:
     url: jdbc:postgresql://localhost:5432/flash_sale_b2c
     username: postgres
     password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: FlashSaleLocalHikariPool
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  # --- JPA / Hibernate ---
   jpa:
-    hibernate:
-      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
+
+  # --- Redis ---
   data:
     redis:
       host: localhost
       port: 6379
+      password: ""
+      timeout: 3000ms
 
-# --- Cloudinary ---
-# TODO: Diem 3 bien sau vao account Cloudinary cua ban (free tier OK)
-# Dang khi lay o https://cloudinary.com/console
+# --- Logging chi tiet cho local ---
+logging:
+  level:
+    root: INFO
+    com.b2c: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+# --- Cloudinary (Luu tru anh da doi tuong - Image Module) ---
+# TODO: Dang ky tai khoan free tai https://cloudinary.com/console roi dien 3 bien sau.
 cloudinary:
   cloud-name: YOUR_CLOUD_NAME
   api-key: YOUR_API_KEY
   api-secret: YOUR_API_SECRET
   folder: flash-sale-b2c/local
 
-# --- JWT (dev) ---
+# --- JWT (dev secret) ---
+# TODO: Tao chuoi random >= 64 ky tu (vd: (hs256) ...).
+# Hoac export JWT_SECRET trong terminal thay vi commit secret vao file.
 jwt:
-  secret: dev-secret-do-not-use-in-production-min-64-chars-aaaaaaaaaaaaaaaaaa
+  secret: YOUR_JWT_SECRET_DEV_ONLY_MIN_64_CHARS_FILL_IN_HERE_FOR_LOCAL_DEVELOPMENT
