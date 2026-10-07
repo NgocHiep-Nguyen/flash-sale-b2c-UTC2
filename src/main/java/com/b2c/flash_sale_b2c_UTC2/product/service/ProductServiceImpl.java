@@ -3,6 +3,8 @@ package com.b2c.flash_sale_b2c_UTC2.product.service;
 import com.b2c.flash_sale_b2c_UTC2.common.api.PageResponse;
 import com.b2c.flash_sale_b2c_UTC2.common.exception.BusinessException;
 import com.b2c.flash_sale_b2c_UTC2.flashsale.repository.FlashSaleItemRepository;
+import com.b2c.flash_sale_b2c_UTC2.image.enums.ImageOwnerType;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.b2c.flash_sale_b2c_UTC2.order.repository.OrderItemRepository;
 import com.b2c.flash_sale_b2c_UTC2.product.dto.CreateProductRequest;
 import com.b2c.flash_sale_b2c_UTC2.product.dto.CreateProductVariantRequest;
@@ -53,6 +55,7 @@ public class ProductServiceImpl implements ProductService {
     private final OrderItemRepository orderItemRepository;
     private final FlashSaleItemRepository flashSaleItemRepository;
     private final ProductVariantMapper productVariantMapper;
+    private final ImageService imageService;
 
     @Override
     @Transactional
@@ -285,8 +288,15 @@ public class ProductServiceImpl implements ProductService {
                 productVariantRepository.findByProductIdInAndStatus(productIds, "ACTIVE").stream()
                         .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
 
+        // Batch-load ảnh primary để tránh N+1
+        Map<Long, String> primaryImageMap = productIds.isEmpty() ? Map.of() :
+                imageService.getPrimaryImagesByOwnerIds(ImageOwnerType.PRODUCT, productIds)
+                        .entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> nullSafeUrl(e.getValue())));
+
         List<ProductSummaryResponse> content = productPage.getContent().stream()
-                .map(p -> mapToSummaryResponse(p, variantsByProductId.getOrDefault(p.getId(), List.of())))
+                .map(p -> mapToSummaryResponse(p, variantsByProductId.getOrDefault(p.getId(), List.of()),
+                        primaryImageMap.get(p.getId())))
                 .toList();
 
         return PageResponse.of(productPage, content);
@@ -319,8 +329,14 @@ public class ProductServiceImpl implements ProductService {
                 productVariantRepository.findByProductIdInAndStatus(productIds, "ACTIVE").stream()
                         .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
 
+        Map<Long, String> primaryImageMap = productIds.isEmpty() ? Map.of() :
+                imageService.getPrimaryImagesByOwnerIds(ImageOwnerType.PRODUCT, productIds)
+                        .entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> nullSafeUrl(e.getValue())));
+
         List<ProductSummaryResponse> content = productPage.getContent().stream()
-                .map(p -> mapToSummaryResponse(p, variantsByProductId.getOrDefault(p.getId(), List.of())))
+                .map(p -> mapToSummaryResponse(p, variantsByProductId.getOrDefault(p.getId(), List.of()),
+                        primaryImageMap.get(p.getId())))
                 .toList();
 
         return PageResponse.of(productPage, content);
@@ -398,7 +414,7 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private ProductSummaryResponse mapToSummaryResponse(Product product, List<ProductVariant> variants) {
+    private ProductSummaryResponse mapToSummaryResponse(Product product, List<ProductVariant> variants, String preloadedImageUrl) {
         BigDecimal minPrice = null;
         BigDecimal maxPrice = null;
         int totalStock = 0;
@@ -413,6 +429,10 @@ public class ProductServiceImpl implements ProductService {
             totalStock += (v.getStockQuantity() != null ? v.getStockQuantity() : 0);
         }
 
+        String imageUrl = preloadedImageUrl != null
+                ? preloadedImageUrl
+                : nullSafeUrl(imageService.getPrimaryImage(ImageOwnerType.PRODUCT, product.getId()));
+
         return ProductSummaryResponse.builder()
                 .id(product.getId())
                 .storeId(product.getStore().getId())
@@ -420,6 +440,7 @@ public class ProductServiceImpl implements ProductService {
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .name(product.getName())
+                .imageUrl(imageUrl)
                 .minPrice(minPrice)
                 .maxPrice(maxPrice)
                 .totalStock(totalStock)
@@ -429,8 +450,23 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private ProductDetailResponse buildProductDetailResponse(Product product, List<ProductVariant> variants) {
+        // 1 query cho ảnh primary của Product
+        String productImageUrl = nullSafeUrl(
+                imageService.getPrimaryImage(ImageOwnerType.PRODUCT, product.getId()));
+        // Từng variant: 1 query / variant (chấp nhận N+1 nhỏ trong context detail)
+        Map<Long, String> variantImageMap = variants.stream()
+                .collect(Collectors.toMap(
+                                ProductVariant::getId,
+                                v -> nullSafeUrl(
+                                        imageService.getPrimaryImage(ImageOwnerType.VARIANT, v.getId())),
+                                (a, b) -> a));
+
         List<ProductVariantResponse> variantResponses = variants.stream()
-                .map(productVariantMapper::toResponse)
+                .map(v -> {
+                    ProductVariantResponse r = productVariantMapper.toResponse(v);
+                    r.setImageUrl(variantImageMap.get(v.getId()));
+                    return r;
+                })
                 .toList();
 
         return ProductDetailResponse.builder()
@@ -440,11 +476,16 @@ public class ProductServiceImpl implements ProductService {
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .name(product.getName())
+                .imageUrl(productImageUrl)
                 .description(product.getDescription())
                 .tierVariationConfigs(product.getTierVariationConfigs())
                 .status(product.getStatus())
                 .createdAt(product.getCreatedAt())
                 .variants(variantResponses)
                 .build();
+    }
+
+    private String nullSafeUrl(com.b2c.flash_sale_b2c_UTC2.image.dto.ImageResponse r) {
+        return r == null ? null : r.getUrl();
     }
 }

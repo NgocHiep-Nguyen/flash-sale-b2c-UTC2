@@ -67,3 +67,10 @@ jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:3600000} # 1 giờ
   refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000} # 7 ngày
 
+# --- Cloudinary (Lưu trữ ảnh đa đối tượng - Image Module) ---
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  folder: ${CLOUDINARY_FOLDER:flash-sale-b2c/local}
+

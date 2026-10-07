@@ -33,6 +33,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	// Redisson (Distributed Lock & benchmark alternative)
 	implementation 'org.redisson:redisson:3.45.0'
+	// Cloudinary SDK (upload/destroy ảnh cho Image Module polymorphic storage)
+	implementation 'com.cloudinary:cloudinary-http5:2.4.0'
 
 	// JWT (JSON Web Token)
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'

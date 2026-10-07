@@ -20,6 +20,7 @@ public class ProductVariantResponse {
     private java.util.Map<String, String> attributes;
     private BigDecimal originalPrice;
     private Integer stockQuantity;
+    private String imageUrl;
     private String status;
     private Long version;
     private Instant createdAt;

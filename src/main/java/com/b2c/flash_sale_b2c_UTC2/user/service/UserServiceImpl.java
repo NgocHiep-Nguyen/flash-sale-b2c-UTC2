@@ -7,6 +7,8 @@ import com.b2c.flash_sale_b2c_UTC2.user.dto.UpdateProfileRequest;
 import com.b2c.flash_sale_b2c_UTC2.user.dto.UserResponse;
 import com.b2c.flash_sale_b2c_UTC2.user.entity.User;
 import com.b2c.flash_sale_b2c_UTC2.user.exception.UserErrorCode;
+import com.b2c.flash_sale_b2c_UTC2.image.enums.ImageOwnerType;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.b2c.flash_sale_b2c_UTC2.user.mapper.UserMapper;
 import com.b2c.flash_sale_b2c_UTC2.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,13 +28,19 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
+    private final ImageService imageService;
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-        return userMapper.toResponse(user);
+        UserResponse resp = userMapper.toResponse(user);
+        com.b2c.flash_sale_b2c_UTC2.image.dto.ImageResponse avatar = imageService.getPrimaryImage(ImageOwnerType.USER, userId);
+        if (avatar != null) {
+            resp.setAvatarUrl(avatar.getUrl());
+        }
+        return resp;
     }
 
     @Override
@@ -55,7 +63,12 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
 
         user = userRepository.save(user);
-        return userMapper.toResponse(user);
+        UserResponse resp = userMapper.toResponse(user);
+        com.b2c.flash_sale_b2c_UTC2.image.dto.ImageResponse avatar = imageService.getPrimaryImage(ImageOwnerType.USER, userId);
+        if (avatar != null) {
+            resp.setAvatarUrl(avatar.getUrl());
+        }
+        return resp;
     }
 
     @Override

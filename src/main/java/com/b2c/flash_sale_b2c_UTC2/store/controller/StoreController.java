@@ -2,6 +2,9 @@ package com.b2c.flash_sale_b2c_UTC2.store.controller;
 
 import com.b2c.flash_sale_b2c_UTC2.auth.security.CustomUserDetails;
 import com.b2c.flash_sale_b2c_UTC2.common.api.ApiResponse;
+import com.b2c.flash_sale_b2c_UTC2.image.dto.ImageResponse;
+import com.b2c.flash_sale_b2c_UTC2.image.enums.ImageOwnerType;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.b2c.flash_sale_b2c_UTC2.store.dto.CreateStoreRequest;
 import com.b2c.flash_sale_b2c_UTC2.store.dto.StoreResponse;
 import com.b2c.flash_sale_b2c_UTC2.store.dto.UpdateStoreRequest;
@@ -14,9 +17,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -27,6 +33,7 @@ import java.util.List;
 public class StoreController {
 
     private final StoreService storeService;
+    private final ImageService imageService;
 
     @Operation(summary = "Đăng ký mở gian hàng mới", description = "Người dùng đăng ký mở gian hàng (mỗi user tối đa 1 gian hàng, trạng thái ban đầu PENDING)")
     @PostMapping
@@ -116,5 +123,19 @@ public class StoreController {
     ) {
         AddressResponse response = storeService.setDefaultStoreAddress(userDetails.getUser().getId(), addressId);
         return ResponseEntity.ok(ApiResponse.success("Đặt địa chỉ kho mặc định thành công", response));
+    }
+
+    @Operation(summary = "Upload logo cho gian hàng", description = "Tự động soft-delete logo cũ (1 store = 1 logo ACTIVE).")
+    @PostMapping(value = "/me/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ImageResponse>> uploadLogo(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestPart("file") MultipartFile file
+    ) {
+        Long currentUserId = userDetails.getUser().getId();
+        Long storeId = storeService.getMyStore(currentUserId).getId();
+        ImageResponse resp = imageService.attachImage(
+                currentUserId, ImageOwnerType.STORE, storeId, file, null, null);
+        return ResponseEntity.status(HttpStatusCode.valueOf(201))
+                .body(ApiResponse.success("Upload logo thành công", resp));
     }
 }

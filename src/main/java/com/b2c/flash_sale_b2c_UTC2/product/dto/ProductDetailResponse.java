@@ -22,6 +22,7 @@ public class ProductDetailResponse {
     private Integer categoryId;
     private String categoryName;
     private String name;
+    private String imageUrl;
     private String description;
     private List<TierVariationConfigDto> tierVariationConfigs;
     private String status;

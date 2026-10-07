@@ -16,6 +16,7 @@ public class ProductResponse {
     private Long storeId;
     private Integer categoryId;
     private String name;
+    private String imageUrl;
     private String description;
     private java.util.List<TierVariationConfigDto> tierVariationConfigs;
     private String status;

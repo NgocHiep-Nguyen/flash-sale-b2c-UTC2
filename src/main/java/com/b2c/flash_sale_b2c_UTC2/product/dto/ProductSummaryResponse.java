@@ -22,6 +22,7 @@ public class ProductSummaryResponse {
     private Integer categoryId;
     private String categoryName;
     private String name;
+    private String imageUrl;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
     private Integer totalStock;
