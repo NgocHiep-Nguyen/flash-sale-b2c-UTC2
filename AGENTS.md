@@ -1525,19 +1525,41 @@ Nếu `java -version` không phải Java 25 thì **dừng và báo lỗi**.
 
 ## 41. Git Workflow
 
-### Branch
+### Branching model
 
 ```text
-feature/...
-fix/...
-refactor/...
-chore/...
-docs/...
+main       # production-ready, được bảo vệ, chỉ merge qua PR
+dev        # integration branch, base cho mọi branch mới
+feature/<shorter-desc>    # vd: feature/order-module, feature/flashsale-reservation
+fix/<shorter-desc>        # vd: fix/auth-401-loop, fix/stock-rollback-quantity
+hotfix/<shorter-desc>     # vd: hotfix/payment-callback-timeout — sửa khẩn cấp, branch từ main, merge cả main + dev
+refactor/<shorter-desc>   # vd: refactor/extract-flashsale-order-port
+chore/<shorter-desc>      # vd: chore/init-project-structure
+docs/<shorter-desc>       # vd: docs/sync-api-document.md
 ```
+
+Khi nào dùng `hotfix/` thay cho `fix/`:
+
+- `fix/<x>` — bug thường, làm trong sprint, branch từ `dev`, merge vào `dev`.
+- `hotfix/<x>` — bug **khẩn cấp** trên production, branch từ `main`, merge thẳng vào `main` rồi cherry-pick / merge ngược về `dev`.
+
+### Quy trình BẮT BUỘC trước mỗi task
+
+```text
+1. git checkout dev
+2. git pull origin dev
+3. git checkout -b <type>/<shorter-desc>      # tạo nhánh mới từ dev
+4. ... làm task ...
+5. git add .                                   # stage toàn bộ thay đổi
+6. git commit -m "<type>: <mô tả ngắn>"
+7. DỪNG — KHÔNG push (xem mục "Không push" bên dưới)
+```
+
+> **Lưu ý**: Mỗi `shorter-desc` phải mô tả đúng tính năng đang làm, theo chuẩn đặt tên nhánh của doanh nghiệp. Không đặt tên chung chung kiểu `feature/new`, `fix/bug`, `chore/update`.
 
 ### Commit message
 
-Ngắn gọn, đúng thay đổi, conventional commit:
+Ngắn gọn, đúng thay đổi, conventional commit (tiếng Anh):
 
 ```text
 feat: implement flash sale reservation
@@ -1545,7 +1567,45 @@ fix: restore exact reserved stock on timeout
 chore: initialize project structure
 docs: update API endpoint for image module
 refactor: extract FlashSaleOrderPort interface
+hotfix: patch payment callback signature mismatch
 ```
+
+- 1 commit = 1 concern (không gộp `feat` + `fix` trong cùng commit).
+- Nếu có issue / task ID: `feat: implement cart (#12)`.
+- Body (nếu cần) giải thích **tại sao**, không lặp lại **cái gì**.
+
+### Quy tắc commit & add
+
+- Dùng `git add .` để đưa toàn bộ file đã sửa vào staging area, sau đó commit.
+- KHÔNG cần (và không khuyến khích) `git add <file>` thủ công từng file.
+- Commit CHỈ những gì đã thực sự thay đổi trong task hiện tại — không commit file lạ (vd file generated, file tạm).
+
+### KHÔNG push
+
+- Agent **TUYỆT ĐỐI KHÔNG** chạy `git push` dưới mọi hình thức (`git push`, `git push origin`, `git push -u`, `git push --force`, ...).
+- Việc push lên GitHub là của **người dùng** — đây là quy tắc bắt buộc.
+- Sau khi commit xong → báo cáo cho user (theo format mục #45), user tự quyết định push & tạo PR / merge theo workflow của họ.
+- Nếu user yêu cầu agent push → agent **vẫn từ chối** và nhắc lại rule này, trừ khi user gỡ rule rõ ràng.
+
+### Conflict resolution
+
+Khi `git pull`, `git merge`, hoặc `git rebase` xảy ra conflict:
+
+1. Agent chạy `git status` để liệt kê file bị conflict.
+2. Agent **KHÔNG tự ý** resolve bằng:
+   - `git checkout --theirs <path>`
+   - `git checkout --ours <path>`
+   - `git add <path>` trước khi user duyệt
+   - Sửa nội dung file conflict mà chưa hỏi user
+3. Agent **đọc từng file conflict**, tóm tắt cho user:
+   - Dòng nào đang bị conflict.
+   - Hai phiên bản (local vs remote) khác nhau điểm nào.
+   - Hệ quả nếu giữ theirs / ours / kết hợp.
+4. Agent dùng `AskQuestion` để user chọn hướng xử lý:
+   - Giữ phiên bản của mình (ours).
+   - Giữ phiên bản từ remote (theirs).
+   - Kết hợp thủ công (agent sẽ trình bày diff để user chỉnh).
+5. Sau khi user duyệt → agent mới sửa file + `git add .` + commit.
 
 ### Không commit
 
