@@ -1521,6 +1521,83 @@ Nếu `java -version` không phải Java 25 thì **dừng và báo lỗi**.
 - Mỗi feature mới phải có unit test cơ bản.
 - Coverage mục tiêu: **>= 60%** cho service layer, **>= 40%** tổng.
 
+### Bắt buộc viết test
+
+Mọi task implement feature / fix bug **PHẢI** kèm test trong cùng PR (commit riêng nếu cần):
+
+- **Scope bắt buộc**: service layer của module đang thay đổi.
+  - Controller không bắt buộc (có thể mock service) trừ khi task chủ yếu ở controller layer.
+  - Repository không bắt buộc test riêng (đã được cover qua integration test).
+- **Loại test**:
+  - Unit test cho business logic thuần (validation, ownership check, state machine).
+  - Integration test cho flow có **read/write DB**, **Redis**, hoặc **external client**.
+- **Quy tắc phạm vi**:
+  - Cover happy path + ít nhất 1 edge case (boundary, null/empty, invalid input).
+  - Test cho error path khi service throw `BusinessException(*ErrorCode)`.
+- **Task chỉ đổi config / docs / convention không có code nghiệp vụ** → KHÔNG bắt buộc viết test (vd: refactor không đổi behavior, chỉnh sửa migration, đổi tên hằng).
+- Báo cáo cuối task (mục #45) phải ghi rõ:
+  - Số test thêm/sửa.
+  - Kết quả `gradlew test` (passed/failed + tổng số).
+  - Coverage delta nếu có công cụ đo (Jacoco / IntelliJ).
+
+### Rollback DB sau integration test
+
+Integration test có thể làm thay đổi dữ liệu DB thật (qua Testcontainers hoặc H2 embedded). **PHẢI** đảm bảo DB được đưa về trạng thái ban đầu sau khi test xong.
+
+#### Cơ chế mặc định (bắt buộc theo thứ tự ưu tiên)
+
+1. **`@Transactional` trên test method** (Spring Test).
+ - Spring sẽ tự rollback sau khi method kết thúc (kể cả khi test pass hay fail).
+ - Phù hợp khi test chỉ thực hiện write trong transaction duy nhất.
+ - **KHÔNG dùng** nếu test cần commit thật (vd: test trigger, test async job, test scheduler).
+
+2. **`@Sql` script cleanup** (cuối method).
+ - Dùng khi `@Transactional` không phù hợp (vd: cần commit để verify trigger / constraint / scheduler).
+ - Đặt script rollback (`TRUNCATE TABLE ...`, `DELETE FROM ...`) trong `src/test/resources/cleanup.sql` và reference bằng `@Sql(scripts = "/cleanup.sql", executionPhase = AFTER_TEST_METHOD)`.
+
+3. **Testcontainers** (mặc định cho integration test backend).
+ - Mỗi test class dùng container Postgres riêng (qua `@Container` + `@Testcontainers`).
+ - Container bị huỷ sau khi test class kết thúc → DB sạch cho class sau.
+ - Tận dụng `@DynamicPropertySource` để wire `spring.datasource.*` tới container.
+
+4. **Manual cleanup trong `@AfterEach`** (chỉ khi 3 cách trên không khả thi).
+ - Dùng `JdbcTemplate` hoặc `TestEntityManager` để xóa data inserted.
+ - **KHÔNG khuyến khích** vì dễ sót và không cover được lỗi giữa chừng.
+
+#### Quy tắc chung
+
+- Test **không được** để lại data rác trong DB sau khi chạy.
+- Test **không được** phụ thuộc vào data có sẵn trong DB thật (dev / staging).
+- Nếu test phải dùng data seed cố định → seed trong `@BeforeEach` + cleanup trong `@AfterEach`.
+- Khi test fail giữa chừng → cleanup **vẫn phải chạy** (JUnit đảm bảo `@AfterEach` luôn chạy, kể cả khi `@Before` fail).
+- Báo cáo cuối task ghi rõ cơ chế rollback nào đang dùng cho integration test của task.
+
+#### Ví dụ template
+
+```java
+@DataJpaTest
+@Testcontainers
+class FlashSaleItemRepositoryIT {
+ @Container
+ static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+ @DynamicPropertySource
+ static void datasourceProps(DynamicPropertyRegistry registry) {
+ registry.add("spring.datasource.url", postgres::getJdbcUrl);
+ registry.add("spring.datasource.username", postgres::getUsername);
+ registry.add("spring.datasource.password", postgres::getPassword);
+ }
+
+ @Autowired FlashSaleRepository repo;
+
+ @Test
+ void findActiveItems_shouldReturnOnlyActive() {
+ // seed + assert
+ // container tự huỷ sau test class → DB sạch
+ }
+}
+```
+
 ---
 
 ## 41. Git Workflow
