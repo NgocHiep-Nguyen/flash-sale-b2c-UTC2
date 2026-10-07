@@ -149,7 +149,6 @@ public class FlashSaleItemService {
                         .sku(item.getVariant().getSku())
                         .variantName(item.getVariant().getVariantName())
                         .productName(item.getVariant().getProduct().getName())
-                        .imageUrl(item.getVariant().getImageUrl() != null ? item.getVariant().getImageUrl() : item.getVariant().getProduct().getImageUrl())
                         .originalPrice(item.getVariant().getOriginalPrice())
                         .flashSalePrice(item.getFlashSalePrice())
                         .allocatedStock(item.getAllocatedStock())

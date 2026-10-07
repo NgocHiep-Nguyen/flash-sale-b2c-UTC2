@@ -33,7 +33,6 @@ public class PublicFlashSaleSlotResponse {
         private String sku;
         private String variantName;
         private String productName;
-        private String imageUrl;
         private BigDecimal originalPrice;
         private BigDecimal flashSalePrice;
         private Integer allocatedStock;

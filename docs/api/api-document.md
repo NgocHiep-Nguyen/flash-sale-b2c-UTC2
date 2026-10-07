@@ -55,6 +55,7 @@
 | **Phân trang mặc định** | `page=0`, `size=20`, `MAX_PAGE_SIZE=100` |
 | **Tên role trong Spring Security** | `ROLE_BUYER`, `ROLE_SELLER`, `ROLE_ADMIN` |
 | **Mặc định phân trang sort** | `createdAt DESC` |
+| **Quản lý ảnh** | Tất cả ảnh (avatar User, logo Store, gallery Product/Variant, album Review) được quản lý qua bảng `images` Polymorphic (xem Mục 28). 5 cột ảnh cũ (`users.avatar_url`, `stores.logo_url`, `products.image_url`, `product_variants.image_url`, `product_reviews.image_urls`) đã bị xóa bởi migration V4. |
 
 ---
 
@@ -1698,4 +1699,70 @@ stompClient.subscribe(
 
 ---
 
-**Phiên bản tài liệu**: 1.0 · **Cập nhật lần cuối**: 2026-10-03 · **Nguồn**: Backend `flash-sale-b2c-UTC2`
+## 28. Image Management Module (Polymorphic Storage - Cloudinary)
+
+> **Lưu ý:** Mục này mô tả API quản lý ảnh dự kiến (task sau). Migration V3 (tạo bảng `images`) đã được apply vào DB. Hiện tại chưa có Controller/Service tương ứng trong code Java.
+
+### 28.1 Nguyên tắc
+
+- Tất cả ảnh của **5 loại đối tượng** (User avatar, Store logo, Product gallery, Variant gallery, Review album) đều quản lý qua **bảng `images`** với cặp khóa `(owner_type, owner_id)`.
+- Ảnh vật lý lưu trên **Cloudinary** (CDN). Bảng lưu `url` (hiển thị) và `cloudinary_public_id` (để xóa).
+- 1 user chỉ có 1 avatar ACTIVE; 1 store chỉ có 1 logo ACTIVE; 1 product/variant chỉ có 1 ảnh primary ACTIVE.
+- **Xóa ảnh**: soft delete (`status='INACTIVE'`) → async Cloudinary cleanup → scheduled job dọn record >30 ngày.
+
+### 28.2 Endpoints dự kiếng
+
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/images/upload` | Authenticated | Upload 1 ảnh mới lên Cloudinary. Body: `multipart/form-data` với field `file` + metadata (`ownerType`, `isPrimary?`). Trả về `{id, url, publicId}`. |
+| `GET` | `/api/v1/images` | Authenticated | Lấy danh sách ảnh. Query: `ownerType` (bắt buộc) + `ownerId` (bắt buộc). Trả `List<ImageResponse>` sắp xếp theo `displayOrder ASC`. |
+| `PATCH` | `/api/v1/images/{id}/primary` | Owner | Đánh dấu ảnh là primary (chỉ áp dụng cho PRODUCT/VARIANT). Tự động bỏ primary của ảnh cũ (partial unique index). |
+| `PATCH` | `/api/v1/images/{id}/order` | Owner | Cập nhật `displayOrder` (chỉ áp dụng cho 1-N gallery như REVIEW). |
+| `DELETE` | `/api/v1/images/{id}` | Owner | Soft delete (`status='INACTIVE'`). Phát event async để xóa trên Cloudinary. |
+| `DELETE` | `/api/v1/images/{id}/force` | Admin | Hard delete (xóa cả record DB + gọi Cloudinary destroy ngay). |
+
+### 28.3 Upload Avatar (User) — Endpoint chuyên dụng dự kiến
+
+| Method | Endpoint | Access | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/users/me/avatar` | Authenticated | Upload avatar mới. Tự động soft delete avatar cũ (nếu có). Validate 1 user = 1 avatar ACTIVE qua partial unique index. |
+
+Tương tự: `/api/v1/stores/me/logo`, `/api/v1/seller/products/{id}/images`, `/api/v1/seller/products/{productId}/variants/{variantId}/images`, `/api/v1/reviews/{orderItemId}/images`.
+
+### 28.4 Response mẫu
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "Lấy danh sách ảnh thành công",
+  "data": [
+    {
+      "id": 42,
+      "ownerType": "PRODUCT",
+      "ownerId": 100,
+      "url": "https://res.cloudinary.com/demo/image/upload/v1234567890/abc.jpg",
+      "publicId": "abc",
+      "displayOrder": 1,
+      "isPrimary": true,
+      "status": "ACTIVE",
+      "createdAt": "2026-10-07T09:00:00+07:00"
+    }
+  ],
+  "timestamp": "2026-10-07T09:00:01+07:00"
+}
+```
+
+### 28.5 Error codes dự kiến
+
+| HTTP | ErrorCode | Ý nghĩa |
+| :---: | :--- | :--- |
+| 400 | `IMAGE_400` (`FILE_TOO_LARGE`) | File >5MB |
+| 400 | `IMAGE_400` (`INVALID_FORMAT`) | Không phải JPG/PNG/WebP |
+| 403 | `IMAGE_403` (`NOT_OWNER`) | User không sở hữu owner (vd: seller A upload ảnh cho product của seller B) |
+| 409 | `IMAGE_409` (`PRIMARY_EXISTS`) | Đã có ảnh primary ACTIVE khác |
+| 502 | `IMAGE_502` (`CLOUDINARY_FAILED`) | Cloudinary API fail (retry qua scheduled job) |
+
+---
+
+**Phiên bản tài liệu**: 1.1 · **Cập nhật lần cuối**: 2026-10-07 · **Nguồn**: Backend `flash-sale-b2c-UTC2`

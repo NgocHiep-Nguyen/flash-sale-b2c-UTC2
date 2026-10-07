@@ -9,17 +9,17 @@
 * **Hệ quản trị CSDL:** PostgreSQL 16+
 * **Chuẩn thiết kế dữ liệu:** Chuẩn hóa cấp 3 (3NF - Third Normal Form)
 * **Tầng Cache & Concurrency:** Redis In-Memory (Lua Scripting & Redisson Distributed Lock)
-* **Quy mô CSDL:** 24 Bảng dữ liệu hoàn chỉnh (Hỗ trợ Đa người bán, Hoa hồng sàn, Mô hình biến thể phân loại hàng SPU - SKU chuẩn TMĐT, Giỏ hàng Shopping Cart, Đánh giá & Phản hồi Verified Reviews, ZaloPay/COD, OAuth2, Phân quyền Ma trận RBAC kèm Permission Groups & Cờ khóa tính năng, Sổ địa chỉ chuẩn hóa 2 Khóa ngoại vật lý kèm tọa độ GPS, Phân hệ Khuyến mãi Voucher)
+* **Quy mô CSDL:** 25 Bảng dữ liệu hoàn chỉnh (Hỗ trợ Đa người bán, Hoa hồng sàn, Mô hình biến thể phân loại hàng SPU - SKU chuẩn TMĐT, Giỏ hàng Shopping Cart, Đánh giá & Phản hồi Verified Reviews, ZaloPay/COD, OAuth2, Phân quyền Ma trận RBAC kèm Permission Groups & Cờ khóa tính năng, Sổ địa chỉ chuẩn hóa 2 Khóa ngoại vật lý kèm tọa độ GPS, Phân hệ Khuyến mãi Voucher, Quản lý Ảnh đa đối tượng Polymorphic với Cloudinary)
 
 ---
 
 ## 1. Nguyên lý Chuẩn hóa 3NF (Third Normal Form Proof)
 
-Cơ sở dữ liệu của hệ thống bao gồm **24 bảng**, được thiết kế tuân thủ nghiêm ngặt chuẩn hóa cấp 3 (3NF):
+Cơ sở dữ liệu của hệ thống bao gồm **25 bảng**, được thiết kế tuân thủ nghiêm ngặt chuẩn hóa cấp 3 (3NF):
 
 1. **Chuẩn 1 (1NF - First Normal Form):**
    * Mọi thuộc tính đều mang giá trị nguyên tử (Atomic values), không có cột đa trị (ví dụ: danh sách món hàng tách thành `order_items`, biến thể SKU tách thành `product_variants`, món hàng trong giỏ tách thành `cart_items`, đánh giá tách thành `product_reviews`, lượt dùng voucher tách thành `voucher_usages`, phân bổ quyền tách thành `group_permissions`, địa chỉ tách thành bảng `addresses`).
-   * Không có nhóm lặp thuộc tính (Repeating groups). Các trường `JSONB` như `tier_variation_configs`, `attributes`, hoặc `image_urls` (ảnh feedback review) chỉ đóng vai trò lưu metadata động phục vụ hiển thị UI và cấu hình phân loại tùy biến, trong khi mã định danh SKU, giá bán lẻ, tồn kho và các thực thể đánh giá đều được nguyên tử hóa và chuẩn hóa triệt để.
+   * Không có nhóm lặp thuộc tính (Repeating groups). Các trường `JSONB` như `tier_variation_configs`, `attributes` chỉ đóng vai trò lưu metadata động phục vụ hiển thị UI và cấu hình phân loại tùy biến, trong khi mã định danh SKU, giá bán lẻ, tồn kho và các thực thể đánh giá đều được nguyên tử hóa và chuẩn hóa triệt để. Ảnh của tất cả các đối tượng (Product gallery, Variant gallery, User avatar, Store logo, Review album) được quản lý tập trung qua bảng `images` polymorphic.
 2. **Chuẩn 2 (2NF - Second Normal Form):**
    * Đã đạt 1NF.
    * Toàn bộ các thuộc tính không khóa đều phụ thuộc hàm đầy đủ vào khóa chính (Full Functional Dependency).
@@ -303,9 +303,22 @@ erDiagram
         bigint order_item_id FK,UK
         smallint rating
         text comment
-        jsonb image_urls
         text seller_reply
         timestamptz seller_reply_at
+        varchar status
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    IMAGES {
+        bigint id PK
+        varchar owner_type
+        bigint owner_id
+        varchar url
+        varchar cloudinary_public_id
+        int display_order
+        boolean is_primary
+        boolean cloudinary_deleted
         varchar status
         timestamptz created_at
         timestamptz updated_at
@@ -348,11 +361,19 @@ erDiagram
     ORDERS ||--o| VOUCHER_USAGES : "applies"
     VOUCHERS ||--o{ ORDERS : "applied_to"
     ORDERS ||--o| ADDRESSES : "snapshots_from"
+
+    %% Quan he polymorphic: bang images tham chieu den 5 owner types
+    %% (vi mermaid ER khong ho tro polymorphic nen tao 5 quan he ly thuyet)
+    PRODUCTS         ||--o{ IMAGES : "has_gallery (owner_type=PRODUCT)"
+    PRODUCT_VARIANTS ||--o{ IMAGES : "has_gallery (owner_type=VARIANT)"
+    USERS            ||--o| IMAGES : "has_avatar (owner_type=USER, 1-1)"
+    STORES           ||--o| IMAGES : "has_logo (owner_type=STORE, 1-1)"
+    PRODUCT_REVIEWS  ||--o{ IMAGES : "has_album (owner_type=REVIEW)"
 ```
 
 ---
 
-## 3. Chi tiết Thiết kế 24 Bảng CSDL Chuẩn 3NF
+## 3. Chi tiết Thiết kế 25 Bảng CSDL Chuẩn 3NF
 
 ---
 
@@ -378,6 +399,7 @@ erDiagram
   | `password_hash` | `VARCHAR(255)` | NULL | Mật khẩu băm BCrypt (Để NULL nếu đăng nhập OAuth2 thuần) |
   | `full_name` | `VARCHAR(100)` | **NOT NULL** | Họ và tên hiển thị |
   | `phone` | `VARCHAR(15)` | UNIQUE, NULL | Số điện thoại liên lạc |
+  | ~~`avatar_url`~~ | ~~`VARCHAR(255)`~~ | ~~NULL~~ | **ĐÃ CHUYỂN SANG BẢNG `images`** (owner_type='USER'). Xem Phân hệ 10. |
   | `avatar_url` | `VARCHAR(255)` | NULL | Đường dẫn ảnh đại diện |
   | `status` | `VARCHAR(20)` | DEFAULT 'ACTIVE' | `ACTIVE`, `LOCKED`, `SUSPENDED` |
   | `created_at` | `TIMESTAMPTZ` | DEFAULT CURRENT_TIMESTAMP | Thời điểm đăng ký tài khoản |
@@ -478,6 +500,7 @@ erDiagram
   | `id` | `BIGSERIAL` | **PRIMARY KEY** | ID gian hàng |
   | `user_id` | `BIGINT` | **NOT NULL, UNIQUE, FK** $\rightarrow$ `users(id)` | Chủ gian hàng (Quan hệ $1-1$ với User) |
   | `store_name` | `VARCHAR(150)` | **NOT NULL, UNIQUE** | Tên thương hiệu gian hàng hiển thị |
+  | ~~`logo_url`~~ | ~~`VARCHAR(255)`~~ | ~~NULL~~ | **ĐÃ CHUYỂN SANG BẢNG `images`** (owner_type='STORE'). Xem Phân hệ 10. |
   | `logo_url` | `VARCHAR(255)` | NULL | Đường dẫn ảnh logo gian hàng |
   | `description` | `TEXT` | NULL | Giới thiệu gian hàng |
   | `default_commission_rate` | `DECIMAL(5,4)` | DEFAULT 0.0500 | Tỷ lệ hoa hồng riêng (VD: `0.0500` = 5.00%) |
@@ -519,6 +542,7 @@ erDiagram
   | `store_id` | `BIGINT` | **NOT NULL, FK** $\rightarrow$ `stores(id)` | Thuộc sở hữu của shop nào |
   | `category_id` | `INT` | **NOT NULL, FK** $\rightarrow$ `categories(id)` | Phân loại vào ngành hàng nào |
   | `name` | `VARCHAR(255)` | **NOT NULL** | Tên sản phẩm gốc (VD: "Áo Thun Unisex UTC2") |
+  | ~~`image_url`~~ | ~~`VARCHAR(255)`~~ | ~~NULL~~ | **ĐÃ CHUYỂN SANG BẢNG `images`** (owner_type='PRODUCT'). Xem Phân hệ 10. |
   | `image_url` | `VARCHAR(255)` | NULL | Link ảnh đại diện chính của sản phẩm |
   | `description` | `TEXT` | NULL | Bài viết mô tả chi tiết thông số |
   | `tier_variation_configs` | **`JSONB`** | NULL | Cấu hình các tầng lựa chọn (VD: `[{"name": "Màu sắc", "options": ["Đen", "Trắng", "Vàng"]}, {"name": "Kích thước", "options": ["S", "M", "L"]}]`). NULL nếu là hàng đơn không có phân loại |
@@ -537,6 +561,7 @@ erDiagram
   | `attributes` | **`JSONB`** | NULL | Cặp key-value thuộc tính phân loại (VD: `{"Màu sắc": "Đen", "Kích thước": "S"}`) |
   | `original_price` | `DECIMAL(15,2)`| **NOT NULL, CHECK (>0)** | Giá niêm yết bán lẻ gốc của riêng biến thể này |
   | `stock_quantity` | `INT` | **NOT NULL, CHECK (>=0)** | Số lượng tồn kho thực tế của riêng biến thể này |
+  | ~~`image_url`~~ | ~~`VARCHAR(255)`~~ | ~~NULL~~ | **ĐÃ CHUYỂN SANG BẢNG `images`** (owner_type='VARIANT'). Xem Phân hệ 10. |
   | `image_url` | `VARCHAR(255)` | NULL | Ảnh chụp riêng của phân loại (VD: ảnh áo vàng khi chọn màu vàng) |
   | `status` | `VARCHAR(20)` | DEFAULT 'ACTIVE' | `ACTIVE`, `INACTIVE`, `OUT_OF_STOCK` |
   | `created_at` | `TIMESTAMPTZ` | DEFAULT CURRENT_TIMESTAMP | Ngày tạo biến thể |
@@ -743,7 +768,7 @@ erDiagram
 ### PHÂN HỆ 9: ĐÁNH GIÁ & PHẢN HỒI SẢN PHẨM (1 BẢNG)
 
 #### 24. Bảng `product_reviews` (Đánh giá & Phản hồi Khách hàng)
-* **Chức năng nghiệp vụ:** Lưu trữ đánh giá của người mua sau khi đơn hàng đã hoàn thành (`COMPLETED`). Khóa ngoại duy nhất `order_item_id` đảm bảo cơ chế **Verified Purchase** (mỗi món hàng mua chỉ được đánh giá 1 lần, chống spam/review ảo). Hỗ trợ đính kèm album ảnh feedback (`image_urls` JSONB) và phản hồi từ phía chủ Shop.
+* **Chức năng nghiệp vụ:** Lưu trữ đánh giá của người mua sau khi đơn hàng đã hoàn thành (`COMPLETED`). Khóa ngoại duy nhất `order_item_id` đảm bảo cơ chế **Verified Purchase** (mỗi món hàng mua chỉ được đánh giá 1 lần, chống spam/review ảo). Album ảnh feedback được lưu ở bảng `images` với `owner_type='REVIEW'` (xem Phân hệ 10). Hỗ trợ phản hồi từ phía chủ Shop.
 * **Tối ưu hóa Truy vấn Đọc (Read Optimization):** Việc lưu trực tiếp `product_id` trong bảng này là quyết định phi chuẩn hóa có chủ đích (Intentional Denormalization) nhằm giúp Storefront truy vấn danh sách review theo sản phẩm với tốc độ cao mà không phải JOIN qua 3 bảng lớn. Service đảm bảo tính toàn vẹn: chỉ cho phép review khi `order.status == 'COMPLETED'`, `order.buyer_id == current_user.id` và `order_item` thuộc đúng `product_id`.
 * **Cấu trúc trường:**
   | Tên trường | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
@@ -763,6 +788,55 @@ erDiagram
 * **Chỉ mục tối ưu:**
   * `CREATE INDEX idx_product_reviews_product ON product_reviews(product_id, status);` — Tối ưu hóa truy vấn hiển thị review và tính điểm trung bình sản phẩm.
   * `CREATE INDEX idx_product_reviews_user ON product_reviews(user_id);`
+  * Lưu ý: Album ảnh feedback của review được lưu ở bảng `images` với `owner_type='REVIEW'` (xem Phân hệ 10).
+
+---
+
+### PHÂN HỆ 10: QUẢN LÝ ẢNH ĐA ĐỐI TƯỢNG - CLOUDINARY (1 BẢNG)
+
+#### 25. Bảng `images` (Polymorphic Image Storage - Thay thế 5 cột ảnh rải rác)
+* **Chức năng nghiệp vụ:** Lưu trữ toàn bộ ảnh của 5 loại đối tượng (Product, Variant, User, Store, Review) trong một bảng thống nhất. Thay thế 5 cột đã xóa bởi migration V4: `products.image_url`, `product_variants.image_url`, `stores.logo_url`, `users.avatar_url`, `product_reviews.image_urls` (JSONB).
+* **Mô hình Polymorphic:** Cặp cột `(owner_type, owner_id)` đóng vai trò khóa ngoại "mềm" tới bảng owner tương ứng. Do tính chất polymorphic, **không thể tạo Foreign Key vật lý** tới 5 bảng owner khác nhau; tính toàn vẹn tham chiếu được đảm bảo bởi Service kiểm tra owner tồn tại trước khi insert.
+* **Tích hợp Cloudinary:** Ảnh vật lý lưu trên Cloudinary (CDN toàn cầu). Bảng lưu URL public và `cloudinary_public_id` để hỗ trợ xóa qua Cloudinary API.
+* **Cấu trúc trường:**
+  | Tên trường | Kiểu dữ liệu | Ràng buộc | Mô tả chi tiết |
+  | :--- | :--- | :--- | :--- |
+  | `id` | `BIGSERIAL` | **PRIMARY KEY** | ID bản ghi ảnh |
+  | `owner_type` | `VARCHAR(20)` | **NOT NULL, CHECK** IN (`PRODUCT`,`VARIANT`,`USER`,`STORE`,`REVIEW`) | Loại đối tượng sở hữu ảnh |
+  | `owner_id` | `BIGINT` | **NOT NULL** | Khóa ngoại "mềm" tới `products.id` / `product_variants.id` / `users.id` / `stores.id` / `product_reviews.id` tùy `owner_type` |
+  | `url` | `VARCHAR(500)` | **NOT NULL** | URL công khai trên Cloudinary để hiển thị ảnh |
+  | `cloudinary_public_id` | `VARCHAR(255)` | NULL | Public ID do Cloudinary cấp, dùng để gọi API destroy khi xóa ảnh |
+  | `display_order` | `INT` | DEFAULT 0, **CHECK (>=0)** | Thứ tự hiển thị (cho gallery nhiều ảnh) |
+  | `is_primary` | `BOOLEAN` | DEFAULT FALSE | Ảnh đại diện chính của product/variant (chỉ áp dụng cho PRODUCT và VARIANT) |
+  | `cloudinary_deleted` | `BOOLEAN` | DEFAULT FALSE | Cờ idempotency: TRUE khi đã gọi Cloudinary destroy thành công, retry sẽ bỏ qua |
+  | `status` | `VARCHAR(20)` | DEFAULT `'ACTIVE'`, CHECK IN (`ACTIVE`,`INACTIVE`) | Trạng thái record: `ACTIVE` = đang hiển thị, `INACTIVE` = đã soft delete |
+  | `created_at` | `TIMESTAMPTZ` | DEFAULT CURRENT_TIMESTAMP | Thời điểm upload ảnh |
+  | `updated_at` | `TIMESTAMPTZ` | DEFAULT CURRENT_TIMESTAMP | Thời điểm cập nhật gần nhất |
+* **Ràng buộc & Chỉ mục:**
+  * `CHECK (status IN ('ACTIVE','INACTIVE'))` — soft delete 2 trạng thái.
+  * `CREATE INDEX idx_images_owner ON images(owner_type, owner_id, display_order);` — Index chính phục vụ truy vấn "liệt kê ảnh của 1 owner theo thứ tự".
+  * `CREATE UNIQUE INDEX uq_images_user_one ON images(owner_id) WHERE owner_type = 'USER' AND status = 'ACTIVE';` — Đảm bảo 1 user chỉ có tối đa 1 avatar ACTIVE.
+  * `CREATE UNIQUE INDEX uq_images_store_one ON images(owner_id) WHERE owner_type = 'STORE' AND status = 'ACTIVE';` — Đảm bảo 1 store chỉ có tối đa 1 logo ACTIVE.
+  * `CREATE UNIQUE INDEX uq_images_owner_one_primary ON images(owner_type, owner_id) WHERE owner_type IN ('PRODUCT','VARIANT') AND is_primary = TRUE AND status = 'ACTIVE';` — Đảm bảo 1 product/variant chỉ có tối đa 1 ảnh primary ACTIVE.
+* **Cơ chế Quản lý Ảnh với Cloudinary:**
+  1. **Upload ảnh mới:** Client upload file qua API → `CloudinaryService.upload(file)` trả về `{url, public_id}` → Service lưu record vào `images` với `status='ACTIVE'`, `cloudinary_deleted=false`.
+  2. **Thay đổi ảnh (vd: user đổi avatar):** Có thể UPDATE record cũ (nếu 1-1 như User/Store) hoặc INSERT record mới + soft delete record cũ (nếu 1-N như Product gallery).
+  3. **Xóa ảnh (Soft delete + Async Cloudinary cleanup):**
+        - Bước 1 (sync, trong transaction DB): `UPDATE images SET status='INACTIVE', updated_at=NOW() WHERE id=:id`. App thấy ảnh biến mất ngay.
+        - Bước 2 (async, sau DB commit): Publish `CloudinaryCleanupEvent {imageId, publicId}` qua `ApplicationEventPublisher` → `@TransactionalEventListener(phase = AFTER_COMMIT)` xử lý.
+        - Bước 3 (worker): Gọi Cloudinary API `destroy(publicId)`. Nếu success → `UPDATE images SET cloudinary_deleted=true WHERE id=:id`. Nếu fail → log error, scheduled job sẽ retry sau.
+  4. **Cleanup định kỳ (Scheduled Job, chạy 02:00 hàng ngày):**
+        ```sql
+        DELETE FROM images
+        WHERE status = 'INACTIVE'
+          AND cloudinary_deleted = true
+          AND updated_at < NOW() - INTERVAL '30 days';
+        ```
+        → Dọn record đã soft-delete >30 ngày VÀ đã xóa Cloudinary thành công, tránh phình data vĩnh viễn.
+* **Lưu ý quan trọng về 3NF & Toàn vẹn:**
+  - Mô hình polymorphic vi phạm chuẩn 3NF về mặt lý thuyết (không có FK vật lý). Đây là **quyết định kiến trúc có chủ đích** để đơn giản hóa quản lý ảnh đa đối tượng, đánh đổi tính toàn vẹn tham chiếu cấp RDBMS lấy sự linh hoạt.
+  - Service bắt buộc validate `owner_id` tồn tại trong bảng tương ứng (theo `owner_type`) trước khi insert.
+  - Khi xóa owner (Product/Store/Review/User), Service phải soft delete tất cả `images` có `owner_id` tương ứng để tránh ảnh mồ côi trên Cloudinary.
 
 ---
 
@@ -888,7 +962,7 @@ Hệ thống quản lý tồn kho chặt chẽ qua 4 giai đoạn:
 
 ## 5. Đánh giá Tính Toàn vẹn & Khả năng Triển khai
 
-Mô hình thiết kế 24 bảng dữ liệu và tầng Cache Redis đáp ứng đầy đủ các yêu cầu kỹ thuật:
+Mô hình thiết kế 25 bảng dữ liệu và tầng Cache Redis đáp ứng đầy đủ các yêu cầu kỹ thuật:
 * **Chuẩn hóa cấu trúc quan hệ:** Khử phụ thuộc bắc cầu ở các thực thể `product_variants`, `flash_sale_items` và `order_items`. Sổ địa chỉ áp dụng 2 khóa ngoại vật lý độc lập (`user_id`, `store_id`) loại bỏ rủi ro mồ côi dữ liệu so với mô hình polymorphic.
 * **Bảo toàn dữ liệu lịch sử:** Các bản chụp (Historical Snapshots) tại `orders` và `order_items` bảo toàn nguyên vẹn giá trị hợp đồng thương mại tại thời điểm giao dịch mà không làm sai lệch cấu trúc chuẩn hóa.
 * **Tối ưu hóa hiệu năng đọc có kiểm soát (Read Optimization):** Lưu trữ `product_id` trong `product_reviews` là quyết định denormalization có chủ đích phục vụ hiển thị Storefront với chi phí truy vấn tối thiểu, được ràng buộc chặt chẽ bởi Service validation.
@@ -898,7 +972,7 @@ Mô hình thiết kế 24 bảng dữ liệu và tầng Cache Redis đáp ứng 
 
 ## 6. Các Hạng Mục Mở Rộng Sau (Future Enhancements)
 
-Nhằm đảm bảo dự án tập trung vào mục tiêu trọng tâm của giai đoạn Giữa kỳ (chống over-selling, giữ chỗ, ZaloPay QR và mô hình 24 bảng), các nội dung nâng cao sau được xác định là hướng phát triển mở rộng trong giai đoạn tiếp theo, không thuộc yêu cầu bắt buộc của đợt bảo vệ giữa kỳ:
+Nhằm đảm bảo dự án tập trung vào mục tiêu trọng tâm của giai đoạn Giữa kỳ (chống over-selling, giữ chỗ, ZaloPay QR và mô hình 25 bảng), các nội dung nâng cao sau được xác định là hướng phát triển mở rộng trong giai đoạn tiếp theo, không thuộc yêu cầu bắt buộc của đợt bảo vệ giữa kỳ:
 
 1. **Tiến trình Đối soát Định kỳ Tự động (Periodic Redis-PostgreSQL Reconciliation Job):** Tác vụ nền chạy quét đối chiếu chéo số lượng tồn kho giữa Redis và PostgreSQL mỗi 15-30 phút để phát hiện và cảnh báo lệch pha trong trường hợp server crash nghiêm trọng.
 2. **Cơ chế Thanh toán Gộp Đa Đơn (Parent Payment / Multi-order QR):** Hỗ trợ gom $N$ đơn hàng sau khi tách đơn (Order Splitting) vào chung 1 mã QR thanh toán ZaloPay duy nhất cho người mua.

@@ -171,7 +171,6 @@ public class CartServiceImpl implements CartService {
                     .sku(variant.getSku())
                     .productName(variant.getProduct().getName())
                     .variantName(variant.getVariantName())
-                    .imageUrl(variant.getImageUrl() != null ? variant.getImageUrl() : variant.getProduct().getImageUrl())
                     .price(price)
                     .stockQuantity(variant.getStockQuantity())
                     .quantity(item.getQuantity())

@@ -42,9 +42,6 @@ public class Store {
     @Column(name = "store_name", nullable = false, unique = true, length = 150)
     private String storeName;
 
-    @Column(name = "logo_url")
-    private String logoUrl;
-
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 

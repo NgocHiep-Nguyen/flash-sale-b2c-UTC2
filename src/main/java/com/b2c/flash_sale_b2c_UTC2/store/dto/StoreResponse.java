@@ -16,7 +16,6 @@ public class StoreResponse {
     private Long id;
     private Long userId;
     private String storeName;
-    private String logoUrl;
     private String description;
     private BigDecimal defaultCommissionRate;
     private String status;

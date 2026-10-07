@@ -65,7 +65,6 @@ public class StoreServiceImpl implements StoreService {
         Store store = Store.builder()
                 .user(user)
                 .storeName(trimmedName)
-                .logoUrl(request.getLogoUrl() != null ? request.getLogoUrl().trim() : null)
                 .description(request.getDescription())
                 .defaultCommissionRate(new BigDecimal("0.0500"))
                 .status("PENDING")
@@ -107,9 +106,6 @@ public class StoreServiceImpl implements StoreService {
             store.setStoreName(trimmedName);
         }
 
-        if (request.getLogoUrl() != null) {
-            store.setLogoUrl(request.getLogoUrl().trim());
-        }
         store.setDescription(request.getDescription());
 
         store = storeRepository.save(store);

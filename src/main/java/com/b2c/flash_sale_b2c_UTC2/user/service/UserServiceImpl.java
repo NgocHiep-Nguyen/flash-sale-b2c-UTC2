@@ -52,9 +52,6 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setFullName(request.getFullName().trim());
-        if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl().trim());
-        }
         user.setUpdatedAt(Instant.now());
 
         user = userRepository.save(user);

@@ -69,7 +69,6 @@ public class ProductServiceImpl implements ProductService {
                 .store(store)
                 .category(category)
                 .name(request.getName().trim())
-                .imageUrl(request.getImageUrl())
                 .description(request.getDescription())
                 .tierVariationConfigs(request.getTierVariationConfigs())
                 .status("ACTIVE")
@@ -87,7 +86,6 @@ public class ProductServiceImpl implements ProductService {
                     .attributes(vReq.getAttributes())
                     .originalPrice(vReq.getOriginalPrice())
                     .stockQuantity(vReq.getStockQuantity())
-                    .imageUrl(vReq.getImageUrl())
                     .status("ACTIVE")
                     .version(0L)
                     .createdAt(Instant.now())
@@ -119,7 +117,6 @@ public class ProductServiceImpl implements ProductService {
         }
 
         product.setName(request.getName().trim());
-        product.setImageUrl(request.getImageUrl());
         product.setDescription(request.getDescription());
         if (request.getStatus() != null) {
             product.setStatus(request.getStatus());
@@ -183,7 +180,6 @@ public class ProductServiceImpl implements ProductService {
                 existing.setAttributes(vReq.getAttributes());
                 existing.setOriginalPrice(vReq.getOriginalPrice());
                 existing.setStockQuantity(vReq.getStockQuantity());
-                existing.setImageUrl(vReq.getImageUrl());
                 if (vReq.getStatus() != null) {
                     existing.setStatus(vReq.getStatus());
                 }
@@ -200,7 +196,6 @@ public class ProductServiceImpl implements ProductService {
                         .attributes(vReq.getAttributes())
                         .originalPrice(vReq.getOriginalPrice())
                         .stockQuantity(vReq.getStockQuantity())
-                        .imageUrl(vReq.getImageUrl())
                         .status(vReq.getStatus() != null ? vReq.getStatus() : "ACTIVE")
                         .version(0L)
                         .createdAt(Instant.now())
@@ -425,7 +420,6 @@ public class ProductServiceImpl implements ProductService {
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .name(product.getName())
-                .imageUrl(product.getImageUrl())
                 .minPrice(minPrice)
                 .maxPrice(maxPrice)
                 .totalStock(totalStock)
@@ -446,7 +440,6 @@ public class ProductServiceImpl implements ProductService {
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .name(product.getName())
-                .imageUrl(product.getImageUrl())
                 .description(product.getDescription())
                 .tierVariationConfigs(product.getTierVariationConfigs())
                 .status(product.getStatus())
