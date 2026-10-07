@@ -89,6 +89,13 @@ Trong các sàn thương mại điện tử hiện đại (Shopee, Lazada, TikTo
    * Đánh giá khả năng kiểm soát tồn kho không bị bán âm và so sánh hiệu năng 2 cơ chế khóa.
 9. **Đóng gói triển khai:**
    * Viết `docker-compose.yml` chạy tự động toàn bộ dịch vụ (PostgreSQL, Redis, Backend Spring Boot, Frontend Next.js).
+10. **Quản lý Ảnh Đa đối tượng (Polymorphic Storage với Cloudinary) — Đã refactor 07/10/2026:**
+    * Thay thế 5 cột ảnh rải rác (`users.avatar_url`, `stores.logo_url`, `products.image_url`, `product_variants.image_url`, `product_reviews.image_urls` JSONB) bằng **bảng `images`** duy nhất với cặp khóa `(owner_type, owner_id)`.
+    * 5 owner types: `PRODUCT`, `VARIANT`, `USER`, `STORE`, `REVIEW`.
+    * Partial Unique Index: 1 user = 1 avatar, 1 store = 1 logo, 1 product/variant = 1 ảnh primary.
+    * Cloudinary lưu ảnh vật lý (CDN). Pattern: Soft delete DB → async Cloudinary destroy → flag `cloudinary_deleted=true` → scheduled job dọn record >30 ngày.
+    * Migration `V3` (tạo bảng `images`) và `V4` (drop 5 cột cũ) đã được apply vào DB PostgreSQL.
+    * **Cảnh báo quan trọng:** App hiện KHÔNG boot được do Hibernate schema validation fail (entity Java còn giữ 5 field ảnh cũ). Code Java Service/Entity/Repository cần được migrate sang đọc/ghi qua bảng `images` trước khi tiếp tục (task kế tiếp).
 
 #### B. Giai đoạn Cuối kì (Final - Scale, AI & Multi-platform):
 1. **Kiến trúc Bất đồng bộ (Asynchronous Order Processing):**
@@ -131,6 +138,7 @@ gantt
     Bước 2: Phân tích yêu cầu (SRS)           :done,    b2, 2026-09-08, 7d
     Bước 3: Thiết kế Hệ thống & DB & Lock     :active,  b3, 2026-09-15, 10d
     Bước 4: Lập trình Backend Spring Boot     :         b4, 2026-09-25, 14d
+    Bước 4a: Refactor ảnh đa đối tượng (Polymorphic) : done, b41_img, 2026-10-07, 2d
     Bước 4b: Lập trình Frontend Next.js       :         b5, 2026-10-02, 12d
     Bước 5: Load Test k6 & Báo cáo Giữa kì    :         b6, 2026-10-14, 10d
     section GIAI ĐOẠN 2: CUỐI KÌ

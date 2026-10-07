@@ -7,6 +7,8 @@ import com.b2c.flash_sale_b2c_UTC2.store.dto.UpdateStoreRequest;
 import com.b2c.flash_sale_b2c_UTC2.store.dto.UpdateStoreStatusRequest;
 import com.b2c.flash_sale_b2c_UTC2.store.entity.Store;
 import com.b2c.flash_sale_b2c_UTC2.store.exception.StoreErrorCode;
+import com.b2c.flash_sale_b2c_UTC2.image.enums.ImageOwnerType;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.b2c.flash_sale_b2c_UTC2.store.mapper.StoreMapper;
 import com.b2c.flash_sale_b2c_UTC2.store.repository.StoreRepository;
 import com.b2c.flash_sale_b2c_UTC2.user.dto.AddressResponse;
@@ -46,6 +48,7 @@ public class StoreServiceImpl implements StoreService {
     private final AddressRepository addressRepository;
     private final StoreMapper storeMapper;
     private final AddressMapper addressMapper;
+    private final ImageService imageService;
 
     @Override
     @Transactional
@@ -65,7 +68,6 @@ public class StoreServiceImpl implements StoreService {
         Store store = Store.builder()
                 .user(user)
                 .storeName(trimmedName)
-                .logoUrl(request.getLogoUrl() != null ? request.getLogoUrl().trim() : null)
                 .description(request.getDescription())
                 .defaultCommissionRate(new BigDecimal("0.0500"))
                 .status("PENDING")
@@ -84,14 +86,14 @@ public class StoreServiceImpl implements StoreService {
         walletRepository.save(wallet);
 
         log.info("Người dùng id={} đã đăng ký gian hàng '{}' thành công (chờ duyệt)", userId, trimmedName);
-        return storeMapper.toResponse(store);
+        return toResponseWithLogo(store);
     }
 
     @Override
     @Transactional(readOnly = true)
     public StoreResponse getMyStore(Long userId) {
         Store store = getStoreByUserIdOrThrow(userId);
-        return storeMapper.toResponse(store);
+        return toResponseWithLogo(store);
     }
 
     @Override
@@ -107,13 +109,10 @@ public class StoreServiceImpl implements StoreService {
             store.setStoreName(trimmedName);
         }
 
-        if (request.getLogoUrl() != null) {
-            store.setLogoUrl(request.getLogoUrl().trim());
-        }
         store.setDescription(request.getDescription());
 
         store = storeRepository.save(store);
-        return storeMapper.toResponse(store);
+        return toResponseWithLogo(store);
     }
 
     @Override
@@ -126,7 +125,7 @@ public class StoreServiceImpl implements StoreService {
             throw new BusinessException(StoreErrorCode.STORE_NOT_APPROVED);
         }
 
-        return storeMapper.toResponse(store);
+        return toResponseWithLogo(store);
     }
 
     @Override
@@ -145,7 +144,7 @@ public class StoreServiceImpl implements StoreService {
 
         store = storeRepository.save(store);
         log.info("Admin đã cập nhật trạng thái gian hàng id={} thành {}", storeId, newStatus);
-        return storeMapper.toResponse(store);
+        return toResponseWithLogo(store);
     }
 
     @Override
@@ -291,5 +290,17 @@ public class StoreServiceImpl implements StoreService {
             userRoleRepository.save(userRole);
             log.info("Đã gán vai trò SELLER cho người dùng id={}", user.getId());
         }
+    }
+
+    /**
+     * Map Store → StoreResponse rồi bổ sung logoUrl lấy từ bảng images (owner_type=STORE).
+     */
+    private StoreResponse toResponseWithLogo(Store store) {
+        StoreResponse resp = storeMapper.toResponse(store);
+        com.b2c.flash_sale_b2c_UTC2.image.dto.ImageResponse logo = imageService.getPrimaryImage(ImageOwnerType.STORE, store.getId());
+        if (logo != null) {
+            resp.setLogoUrl(logo.getUrl());
+        }
+        return resp;
     }
 }
