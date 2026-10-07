@@ -2,6 +2,7 @@ package com.b2c.flash_sale_b2c_UTC2.voucher.service;
 
 import com.b2c.flash_sale_b2c_UTC2.common.exception.BusinessException;
 import com.b2c.flash_sale_b2c_UTC2.store.entity.Store;
+import com.b2c.flash_sale_b2c_UTC2.store.exception.StoreErrorCode;
 import com.b2c.flash_sale_b2c_UTC2.store.repository.StoreRepository;
 import com.b2c.flash_sale_b2c_UTC2.user.entity.User;
 import com.b2c.flash_sale_b2c_UTC2.voucher.dto.ApplyVoucherRequest;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;

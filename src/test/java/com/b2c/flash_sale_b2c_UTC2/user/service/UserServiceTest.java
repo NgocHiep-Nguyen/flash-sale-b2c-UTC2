@@ -8,6 +8,7 @@ import com.b2c.flash_sale_b2c_UTC2.user.entity.User;
 import com.b2c.flash_sale_b2c_UTC2.user.exception.UserErrorCode;
 import com.b2c.flash_sale_b2c_UTC2.user.mapper.UserMapper;
 import com.b2c.flash_sale_b2c_UTC2.user.repository.UserRepository;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class UserServiceTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private ImageService imageService;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -83,7 +87,6 @@ class UserServiceTest {
         UpdateProfileRequest request = UpdateProfileRequest.builder()
                 .fullName("User Updated")
                 .phone("0988888888")
-                .avatarUrl("https://example.com/avatar.png")
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));

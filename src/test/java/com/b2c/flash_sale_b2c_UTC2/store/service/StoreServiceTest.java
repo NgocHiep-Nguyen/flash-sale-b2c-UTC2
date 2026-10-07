@@ -22,6 +22,7 @@ import com.b2c.flash_sale_b2c_UTC2.user.repository.UserRepository;
 import com.b2c.flash_sale_b2c_UTC2.user.repository.UserRoleRepository;
 import com.b2c.flash_sale_b2c_UTC2.wallet.entity.Wallet;
 import com.b2c.flash_sale_b2c_UTC2.wallet.repository.WalletRepository;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,9 @@ class StoreServiceTest {
     private StoreMapper storeMapper;
 
     @Mock
+    private ImageService imageService;
+
+    @Mock
     private AddressMapper addressMapper;
 
     @InjectMocks
@@ -83,9 +87,8 @@ class StoreServiceTest {
         sampleStore = Store.builder()
                 .id(10L)
                 .user(sampleUser)
-                .storeName("Shop Công Nghệ UTC2")
-                .logoUrl("https://example.com/logo.png")
-                .description("Gian hàng chính hãng")
+                .storeName("Shop Cong Nghe UTC2")
+                .description("Gian hang chinh hang")
                 .defaultCommissionRate(new BigDecimal("0.0500"))
                 .status("PENDING")
                 .createdAt(Instant.now())
@@ -96,23 +99,22 @@ class StoreServiceTest {
     @DisplayName("Đăng ký gian hàng thành công khởi tạo trạng thái PENDING và tạo ví tiền")
     void registerStore_Success() {
         CreateStoreRequest request = CreateStoreRequest.builder()
-                .storeName("Shop Công Nghệ UTC2")
-                .logoUrl("https://example.com/logo.png")
-                .description("Gian hàng chính hãng")
+                .storeName("Shop Cong Nghe UTC2")
+                .description("Gian hang chinh hang")
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
         when(storeRepository.existsByUserId(1L)).thenReturn(false);
-        when(storeRepository.existsByStoreName("Shop Công Nghệ UTC2")).thenReturn(false);
+        when(storeRepository.existsByStoreName("Shop Cong Nghe UTC2")).thenReturn(false);
         when(storeRepository.save(any(Store.class))).thenReturn(sampleStore);
         when(storeMapper.toResponse(sampleStore)).thenReturn(StoreResponse.builder()
-                .id(10L).userId(1L).storeName("Shop Công Nghệ UTC2").status("PENDING").build());
+                .id(10L).userId(1L).storeName("Shop Cong Nghe UTC2").status("PENDING").build());
 
         StoreResponse response = storeService.registerStore(1L, request);
 
         assertNotNull(response);
         assertEquals("PENDING", response.getStatus());
-        assertEquals("Shop Công Nghệ UTC2", response.getStoreName());
+        assertEquals("Shop Cong Nghe UTC2", response.getStoreName());
         verify(walletRepository).save(any(Wallet.class));
         verify(storeRepository).save(any(Store.class));
     }

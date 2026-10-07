@@ -63,6 +63,10 @@ dependencies {
 	testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 }
 
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}
+
 compileJava {
 	options.compilerArgs = [
 		'-Amapstruct.defaultComponentModel=spring',

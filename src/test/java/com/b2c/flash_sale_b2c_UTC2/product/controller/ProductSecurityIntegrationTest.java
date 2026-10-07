@@ -10,6 +10,7 @@ import com.b2c.flash_sale_b2c_UTC2.product.dto.CreateProductRequest;
 import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductDetailResponse;
 import com.b2c.flash_sale_b2c_UTC2.product.dto.ProductSummaryResponse;
 import com.b2c.flash_sale_b2c_UTC2.product.service.ProductService;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.b2c.flash_sale_b2c_UTC2.user.entity.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,9 @@ class ProductSecurityIntegrationTest {
 
     @MockitoBean
     private ProductService productService;
+
+    @MockitoBean
+    private ImageService imageService;
 
     @MockitoBean
     private JwtService jwtService;

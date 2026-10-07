@@ -9,6 +9,8 @@ import com.b2c.flash_sale_b2c_UTC2.cart.exception.CartErrorCode;
 import com.b2c.flash_sale_b2c_UTC2.cart.repository.CartItemRepository;
 import com.b2c.flash_sale_b2c_UTC2.cart.repository.CartRepository;
 import com.b2c.flash_sale_b2c_UTC2.common.exception.BusinessException;
+import com.b2c.flash_sale_b2c_UTC2.image.enums.ImageOwnerType;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.b2c.flash_sale_b2c_UTC2.product.entity.Product;
 import com.b2c.flash_sale_b2c_UTC2.product.entity.ProductVariant;
 import com.b2c.flash_sale_b2c_UTC2.product.repository.ProductVariantRepository;
@@ -45,6 +47,9 @@ class CartServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ImageService imageService;
 
     @InjectMocks
     private CartServiceImpl cartService;
@@ -84,6 +89,7 @@ class CartServiceTest {
         CartItem savedItem = CartItem.builder().id(1000L).cart(sampleCart).variant(sampleVariant).quantity(2).build();
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(savedItem);
         when(cartItemRepository.findByCartId(10L)).thenReturn(List.of(savedItem));
+        when(imageService.getPrimaryImagesByOwnerIds(any(ImageOwnerType.class), any())).thenReturn(java.util.Map.of());
 
         CartResponse response = cartService.addToCart(1L, request);
 
@@ -114,6 +120,7 @@ class CartServiceTest {
         when(cartRepository.findByUserId(1L)).thenReturn(Optional.of(sampleCart));
         when(cartItemRepository.findById(1000L)).thenReturn(Optional.of(existingItem));
         when(cartItemRepository.findByCartId(10L)).thenReturn(List.of(existingItem));
+        when(imageService.getPrimaryImagesByOwnerIds(any(ImageOwnerType.class), any())).thenReturn(java.util.Map.of());
 
         CartResponse response = cartService.updateCartItem(1L, 1000L, request);
 
