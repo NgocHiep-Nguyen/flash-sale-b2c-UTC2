@@ -19,9 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Kiểm thử tích hợp khởi động PostgreSQL Testcontainers thật với Flyway migration
- * và kiểm chứng tính toàn vẹn Hibernate ddl-auto: validate trên schema vật lý.
- * Tự động bỏ qua khi môi trường máy phát triển chưa bật Docker Desktop daemon.
+ * Kiá»ƒm thá»­ tÃ­ch há»£p khá»Ÿi Ä‘á»™ng PostgreSQL Testcontainers tháº­t vá»›i Flyway migration
+ * vÃ  kiá»ƒm chá»©ng tÃ­nh toÃ n váº¹n Hibernate ddl-auto: validate trÃªn schema váº­t lÃ½.
+ * Tá»± Ä‘á»™ng bá» qua khi mÃ´i trÆ°á»ng mÃ¡y phÃ¡t triá»ƒn chÆ°a báº­t Docker Desktop daemon.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest
@@ -65,11 +65,11 @@ class TestcontainersPostgresFlywayIntegrationTest {
 
     @Test
     @EnabledIf("isDockerAvailable")
-    @DisplayName("Khởi chạy Flyway và xác thực ddl-auto: validate trên PostgreSQL Testcontainers thật")
+    @DisplayName("Khá»Ÿi cháº¡y Flyway vÃ  xÃ¡c thá»±c ddl-auto: validate trÃªn PostgreSQL Testcontainers tháº­t")
     void testFlywayAndHibernateSchemaValidationOnRealPostgres() throws Exception {
-        assertNotNull(dataSource, "DataSource phải được khởi tạo");
+        assertNotNull(dataSource, "DataSource pháº£i Ä‘Æ°á»£c khá»Ÿi táº¡o");
         try (Connection connection = dataSource.getConnection()) {
-            assertTrue(connection.isValid(2), "Kết nối đến PostgreSQL container phải hợp lệ");
+            assertTrue(connection.isValid(2), "Káº¿t ná»‘i Ä‘áº¿n PostgreSQL container pháº£i há»£p lá»‡");
         }
     }
 }

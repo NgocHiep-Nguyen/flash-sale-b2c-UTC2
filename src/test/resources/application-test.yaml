@@ -1,0 +1,23 @@
+# Profile test: dung cho Unit Test (Mock) - KHING can Postgres
+# Cac test dung Postgres that phai dung @ActiveProfiles("test-local")
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.redisson.spring.starter.RedissonAutoConfigurationV2
+      - org.redisson.spring.starter.RedissonAutoConfiguration
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+kwt:
+  secret: SecureTestLocalSecretWithAtLeast32CharactersHS256Bit2026
+  expiration-ms: 3600000
+  refresh-expiration-ms: 60480000
+
+logging:
+  level:
+    com.b2c.flash_sale_b2c_UTC2: DEBUG

@@ -1,4 +1,5 @@
 # Profile test-local: Dùng PostgreSQL và Redis thật trên máy phát triển
+#        (Testcontainers sẽ override các giá trị datasource/redis khi cần)
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/flash_sale_test

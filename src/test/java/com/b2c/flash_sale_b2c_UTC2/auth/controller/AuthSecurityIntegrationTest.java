@@ -15,6 +15,7 @@ import com.b2c.flash_sale_b2c_UTC2.user.dto.UserResponse;
 import com.b2c.flash_sale_b2c_UTC2.user.entity.User;
 import com.b2c.flash_sale_b2c_UTC2.user.service.AddressService;
 import com.b2c.flash_sale_b2c_UTC2.user.service.UserService;
+import com.b2c.flash_sale_b2c_UTC2.image.service.ImageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,9 @@ class AuthSecurityIntegrationTest {
 
     @MockitoBean
     private AddressService addressService;
+
+    @MockitoBean
+    private ImageService imageService;
 
     @MockitoBean
     private JwtService jwtService;
@@ -106,7 +110,7 @@ class AuthSecurityIntegrationTest {
     @DisplayName("Gọi API đăng nhập với thông tin hợp lệ -> 200 OK")
     void login_WithValidRequest_ShouldReturn200() throws Exception {
         LoginRequest request = LoginRequest.builder()
-                .email("test@example.com")
+                .usernameOrEmail("test@example.com")
                 .password("password123")
                 .build();
 

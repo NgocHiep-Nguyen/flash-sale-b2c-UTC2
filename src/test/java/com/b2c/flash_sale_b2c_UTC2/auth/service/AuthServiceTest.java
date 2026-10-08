@@ -156,7 +156,7 @@ class AuthServiceTest {
     @DisplayName("Đăng nhập thành công với thông tin chính xác")
     void login_Success() {
         LoginRequest request = LoginRequest.builder()
-                .email("test@example.com")
+                .usernameOrEmail("test@example.com")
                 .password("password123")
                 .build();
 
@@ -183,7 +183,7 @@ class AuthServiceTest {
     @DisplayName("Đăng nhập thất bại khi sai mật khẩu")
     void login_ShouldThrowException_WhenPasswordIsIncorrect() {
         LoginRequest request = LoginRequest.builder()
-                .email("test@example.com")
+                .usernameOrEmail("test@example.com")
                 .password("wrong_password")
                 .build();
 
@@ -199,7 +199,7 @@ class AuthServiceTest {
     void login_ShouldThrowException_WhenAccountIsDisabled() {
         sampleUser.setStatus("LOCKED");
         LoginRequest request = LoginRequest.builder()
-                .email("test@example.com")
+                .usernameOrEmail("test@example.com")
                 .password("password123")
                 .build();
 
