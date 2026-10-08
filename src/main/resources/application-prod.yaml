@@ -12,7 +12,7 @@ spring:
   # --- Kết nối CSDL PostgreSQL Production (Supabase Cloud) ---
   # sslmode=require BẮT BUỘC với Supabase.
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:flash_sale_db}?sslmode=require
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:flash_sale_db}?sslmode=require&prepareThreshold=0
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
