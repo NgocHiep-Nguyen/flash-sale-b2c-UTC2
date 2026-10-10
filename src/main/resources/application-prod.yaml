@@ -45,7 +45,7 @@ spring:
 
 # --- CORS: đọc từ env var CORS_ALLOWED_ORIGINS (comma-separated) ---
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000}
 
 # --- Spring Boot Actuator (health check cho Docker) ---
 management:
