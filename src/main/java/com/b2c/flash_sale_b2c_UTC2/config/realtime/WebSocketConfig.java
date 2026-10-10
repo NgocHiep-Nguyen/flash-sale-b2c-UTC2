@@ -62,6 +62,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.addEndpoint("/ws")
                 // Đăng ký HandshakeInterceptor để đọc JWT từ ?token= query param
                 .addInterceptors(handshakeAuthInterceptor)
+                .setAllowedOriginPatterns("*")
                 // SockJS fallback cho browser/server proxy không hỗ trợ raw WS
                 .withSockJS()
                 // CORS cho SockJS (set trong CorsConfig cho /ws/**)

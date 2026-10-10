@@ -7,6 +7,7 @@ import com.b2c.flash_sale_b2c_UTC2.auth.security.CustomUserDetails;
 import com.b2c.flash_sale_b2c_UTC2.auth.security.JwtAuthenticationFilter;
 import com.b2c.flash_sale_b2c_UTC2.auth.service.AuthService;
 import com.b2c.flash_sale_b2c_UTC2.auth.service.JwtService;
+import com.b2c.flash_sale_b2c_UTC2.config.CorsConfig;
 import com.b2c.flash_sale_b2c_UTC2.config.JwtProperties;
 import com.b2c.flash_sale_b2c_UTC2.config.SecurityConfig;
 import com.b2c.flash_sale_b2c_UTC2.user.controller.AddressController;
@@ -34,12 +35,14 @@ import java.util.Collections;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {AuthController.class, UserController.class, AddressController.class})
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, JwtProperties.class})
+@Import({SecurityConfig.class, CorsConfig.class, JwtAuthenticationFilter.class, JwtProperties.class})
 @TestPropertySource(properties = {
         "jwt.secret=MockSecureSecretForTestingJwtAuthenticationFilter2026"
 })
@@ -165,5 +168,18 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value(401));
+    }
+
+    @Test
+    @DisplayName("Gửi OPTIONS preflight request tới /api/v1/auth/login từ origin http://localhost:3000 -> 200 OK với CORS headers")
+    void preflight_AuthLogin_FromLocalhost3000_ShouldReturn200AndCorsHeaders() throws Exception {
+        mockMvc.perform(options("/api/v1/auth/login")
+                        .header("Origin", "http://localhost:3000")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Content-Type,Authorization"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+                .andExpect(header().string("Access-Control-Allow-Methods", org.hamcrest.Matchers.containsString("POST")));
     }
 }
